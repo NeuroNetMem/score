@@ -67,6 +67,7 @@ class CameraDevice(QtCore.QObject):
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         cur_time = str(datetime.datetime.now() - self.start_time)[:-4]
         font = cv2.FONT_HERSHEY_DUPLEX
+        # noinspection PyUnusedLocal
         t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
         tpt = 5, h - 5
         cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 0, 255), 1)
@@ -123,12 +124,13 @@ class CameraDevice(QtCore.QObject):
 
 class CameraWidget(QtWidgets.QWidget):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraWidget.new_frame")
-    key_action = QtCore.pyqtSignal(str, name="CameraWideget.key_action")
+    key_action = QtCore.pyqtSignal(str, name="CameraWidget.key_action")
 
     def __init__(self, camera_device, parent=None, flags=None):
         if flags:
             flags_ = flags
         else:
+            # noinspection PyUnresolvedReferences
             flags_ = QtCore.Qt.WindowFlags()
         super(CameraWidget, self).__init__(parent, flags=flags_)
 
