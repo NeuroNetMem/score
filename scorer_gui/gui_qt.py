@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import datetime
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 
@@ -41,6 +41,8 @@ class CameraDevice(QtCore.QObject):
         self._cameraDevice = cv2.VideoCapture(camera_id)
 
         self._timer = QtCore.QTimer(self)
+        self.start_time = datetime.datetime.now()
+
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self._query_frame)
         self._timer.setInterval(1000 / self.fps)
@@ -57,6 +59,9 @@ class CameraDevice(QtCore.QObject):
                 if state:
                     pt1, pt2 = self.rect_coord[place](w, h)
                     cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
+            cur_time = str(datetime.datetime.now() - self.start_time)[:-4]
+
+
         self.new_frame.emit(frame)
 
     @QtCore.pyqtSlot(str)
