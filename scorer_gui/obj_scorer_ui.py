@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(663, 541)
+        MainWindow.resize(663, 544)
         MainWindow.setMinimumSize(QtCore.QSize(647, 500))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -104,7 +104,7 @@ class Ui_MainWindow(object):
         self.actionOpen_File.setText(_translate("MainWindow", "Open File..."))
 
 from scorer_gui.gui_qt_thread import CameraWidget
-import scorer_gui.play_rc
+import play_rc
 
 if __name__ == "__main__":
     import sys

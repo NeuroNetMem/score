@@ -72,7 +72,7 @@ class CameraWidgetPlugin(QPyDesignerCustomWidgetPlugin):
     # Return the name of the module containing the class that implements the
     # custom widget.  It may include a module path.
     def includeFile(self):
-        return "gui_qt_thread"
+        return "scorer_gui.gui_qt_thread"
 
 # Define the image used for the icon.
 _logo_16x16_xpm = [
