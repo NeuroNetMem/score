@@ -48,10 +48,18 @@ class CameraDevice(QtCore.QObject):
         self._timer.timeout.connect(self._query_frame)
         self._timer.setInterval(1000 / self.fps)
         self.paused = False
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self.out = cv2.VideoWriter('~/output.avi', fourcc, self.fps, self.frame_size)
+        self.out = None
         self.thread = None
         self.to_release = False
+
+    @QtCore.pyqtSlot(bool)
+    def set_mirror(self, mirrored):
+        self.mirrored = mirrored
+
+    @QtCore.pyqtSlot(str)
+    def set_out_video_file(self, filename):
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size)
 
     @QtCore.pyqtSlot()
     def _query_frame(self):
@@ -71,7 +79,8 @@ class CameraDevice(QtCore.QObject):
         t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
         tpt = 5, h - 5
         cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 0, 255), 1)
-        self.out.write(frame)
+        if self.out:
+            self.out.write(frame)
         self.new_frame.emit(frame)
         if self.to_release:
             self.release()
@@ -84,8 +93,11 @@ class CameraDevice(QtCore.QObject):
         print("releasing camera and stopping")
         self._timer.stop()
         time.sleep(0.5)
-        self.out.release()
-        self.out = None
+        if self.out:
+            self.out.release()
+            self.out = None
+        # if self._cameraDevice:
+        #     self._cameraDevice.release()
         if self.thread:
             self.thread.quit()
 
@@ -116,7 +128,7 @@ class CameraDevice(QtCore.QObject):
     @property
     def fps(self):
         fps = 15
-        # fps = int(self._cameraDevice.get(cv2.CAP_PROP_FPS))
+        # fps = int(self._camera_device.get(cv2.CAP_PROP_FPS))
         # if not fps > 0:
         #     fps = self._DEFAULT_FPS
         return fps
@@ -126,20 +138,23 @@ class CameraWidget(QtWidgets.QWidget):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraWidget.new_frame")
     key_action = QtCore.pyqtSignal(str, name="CameraWidget.key_action")
 
-    def __init__(self, camera_device, parent=None, flags=None):
+    def __init__(self, parent=None, flags=None):
         if flags:
             flags_ = flags
         else:
             # noinspection PyUnresolvedReferences
             flags_ = QtCore.Qt.WindowFlags()
         super(CameraWidget, self).__init__(parent, flags=flags_)
-
+        self._camera_device = None
         self._frame = None
+        self.setMinimumSize(640, 360)
+        self.setMaximumSize(640, 360)
 
-        self._cameraDevice = camera_device
-        self._cameraDevice.new_frame.connect(self._on_new_frame)
-
-        w, h = self._cameraDevice.frame_size
+    def set_device(self, camera_device):
+        self._camera_device = camera_device
+        self._camera_device.new_frame.connect(self._on_new_frame)
+        w, h = self._camera_device.frame_size
+        print(w, h)
         self.setMinimumSize(w, h)
         self.setMaximumSize(w, h)
 
@@ -150,14 +165,16 @@ class CameraWidget(QtWidgets.QWidget):
         self.update()
 
     def changeEvent(self, e):
-        if e.type() == QtCore.QEvent.EnabledChange:
+        if self._camera_device is not None and e.type() == QtCore.QEvent.EnabledChange:
             if self.isEnabled():
-                self._cameraDevice.new_frame.connect(self._on_new_frame)
+                self._camera_device.new_frame.connect(self._on_new_frame)
             else:
-                self._cameraDevice.new_frame.disconnect(self._on_new_frame)
+                self._camera_device.new_frame.disconnect(self._on_new_frame)
 
     def paintEvent(self, e):
         if self._frame is None:
+            painter = QtGui.QPainter(self)
+            painter.fillRect(self.rect(), QtCore.Qt.green)
             return
         painter = QtGui.QPainter(self)
         painter.drawImage(QtCore.QPoint(0, 0), OpenCVQImage(self._frame))
@@ -196,7 +213,8 @@ def _main():
     camera_device.moveToThread(thread1)
     thread1.start()
 
-    camera_widget2 = CameraWidget(camera_device)
+    camera_widget2 = CameraWidget()
+    camera_widget2.set_device(camera_device)
     # noinspection PyUnresolvedReferences
     camera_widget2.key_action.connect(camera_device.obj_state_change)
     camera_widget2.show()
