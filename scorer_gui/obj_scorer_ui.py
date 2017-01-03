@@ -152,7 +152,7 @@ class Ui_MainWindow(object):
         self.actionSave_to.setShortcut(_translate("MainWindow", "Ctrl+S"))
 
 from scorer_gui.obj_scorer_model import CameraWidget
-import play_rc
+import scorer_gui.play_rc
 
 if __name__ == "__main__":
     import sys

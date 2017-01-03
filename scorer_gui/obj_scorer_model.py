@@ -77,6 +77,8 @@ class CameraDevice(QtCore.QObject):
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self._query_frame)
         self._timer.setInterval(1000 / self.fps)
+        if not self.from_video:
+            self._timer.start()
         self.paused = False
         if self.from_video:
             self._query_frame()
@@ -218,7 +220,6 @@ class CameraDevice(QtCore.QObject):
             else:
                 self.video_finished_signal.emit()
                 self.paused = True
-
         if self.to_release:
             self.release()
 
