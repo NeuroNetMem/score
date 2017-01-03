@@ -147,6 +147,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.videoInSlider.setEnabled(True)
         self.ui.videoInSlider.setMinimum(0)
         self.ui.videoInSlider.setMaximum(last_frame)
+        print(last_frame)
         self.ui.actionSave_to.setEnabled(True)
 
     def keyPressEvent(self, event):

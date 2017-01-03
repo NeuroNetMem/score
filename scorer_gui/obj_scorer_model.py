@@ -197,7 +197,7 @@ class CameraDevice(QtCore.QObject):
             ret, frame = self._cameraDevice.read()
             if ret:
                 if self.from_video:
-                    self.frame_no = self._cameraDevice.get(cv2.CAP_PROP_FRAME_COUNT)
+                    self.frame_no = int(self._cameraDevice.get(cv2.CAP_PROP_POS_FRAMES))
                     self.frame_pos_signal.emit(self.frame_no)
                 else:
                     self.frame_no += 1
