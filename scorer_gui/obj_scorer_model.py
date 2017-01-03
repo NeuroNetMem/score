@@ -195,7 +195,7 @@ class CameraDevice(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def _query_frame(self):
-        if (not self.from_video) or (self.acquiring and not self.paused):
+        if not self.paused and ((not self.from_video) or (self.acquiring)):
             ret, frame = self._cameraDevice.read()
             if ret:
                 if self.from_video:
@@ -360,7 +360,6 @@ class CameraWidget(QtWidgets.QWidget):
             self._camera_device = camera_device
             self._camera_device.new_frame.connect(self._on_new_frame)
             w, h = self._camera_device.frame_size
-            print(w, h)
             self.setMinimumSize(w, h)
             self.setMaximumSize(w, h)
 
