@@ -40,33 +40,70 @@ class CameraDevice(QtCore.QObject):
     can_acquire_signal = QtCore.pyqtSignal(bool, name="CameraDevice.can_acquire_signal")
     is_acquiring_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_acquiring_signal")
     is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
+    from_video_signal = QtCore.pyqtSignal(bool, name="CameraDevice.from_video_signal")
+    video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
+    frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
 
     def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None):
         super(CameraDevice, self).__init__(parent)
 
-        self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0}
+        self.obj_state = {}
+        self.init_obj_state()
         self.mirrored = mirrored
-
+        self._from_video = False
+        self.display_time = True
+        self.save_raw_video = True
+        self.out = None
+        self.raw_out = None
+        self.csv_out = None
+        self._can_acquire = False
+        self._acquiring = False
+        self._paused = False
+        self.to_release = False
         if video_file:
-            pass  # TODO implement video
+            # noinspection PyArgumentList
+            self._cameraDevice = cv2.VideoCapture(video_file)
+            if not self._cameraDevice.isOpened():
+                raise RuntimeError("Could not open video file {}".format(video_file))
+            self.from_video = True
         else:
             # noinspection PyArgumentList
             self._cameraDevice = cv2.VideoCapture(camera_id)
             if not self._cameraDevice.isOpened():
                 raise RuntimeError("Could not initialize camera id {}".format(camera_id))
+            self.from_video = False
+
         self._timer = QtCore.QTimer(self)
-        self.start_time = datetime.datetime.now()
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self._query_frame)
         self._timer.setInterval(1000 / self.fps)
         self.paused = False
-        self.out = None
-        self._can_acquire = False
-        self._acquiring = False
-        self.to_release = False
+        if self.from_video:
+            self._query_frame()
+        self.start_time = datetime.datetime.now()
+        self.frame_no = 0
+
         self.thread = QtCore.QThread()
         self.moveToThread(self.thread)
         self.thread.start()
+
+    @property
+    def from_video(self):
+        return self._from_video
+
+    @from_video.setter
+    def from_video(self, val):
+        self._from_video = val
+        self.from_video_signal.emit(val)
+
+    def video_last_frame(self):
+        if self.from_video:
+            return self._cameraDevice.get(cv2.CAP_PROP_FRAME_COUNT)
+
+    @QtCore.pyqtSlot(int)
+    def skip_to_frame(self, val):
+        if self.from_video:
+            self._cameraDevice.set(cv2.CAP_PROP_POS_FRAMES, float(val))
 
     @property
     def can_acquire(self):
@@ -85,6 +122,7 @@ class CameraDevice(QtCore.QObject):
     def acquiring(self, val):
         if val:
             self.start_time = datetime.datetime.now()
+            self.frame_no = 0
         self._acquiring = val
         self.is_acquiring_signal.emit(val)
 
@@ -96,6 +134,8 @@ class CameraDevice(QtCore.QObject):
                 self.is_acquiring_signal.emit(True)
             else:
                 self.acquiring = True
+                if not self._timer.isActive():
+                    self._timer.start()
 
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
@@ -105,42 +145,102 @@ class CameraDevice(QtCore.QObject):
     def set_mirror(self, mirrored):
         self.mirrored = mirrored
 
+    @QtCore.pyqtSlot(bool)
+    def set_raw_out(self, val):
+        self.save_raw_video = val
+
+    @QtCore.pyqtSlot(bool)
+    def set_display_time(self, val):
+        self.display_time = val
+
     @QtCore.pyqtSlot(str)
     def set_out_video_file(self, filename):
         if self.out:
             self.out.release()
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size)
+        if self.save_raw_video:
+            self.raw_out = cv2.VideoWriter(self.make_raw_filename(filename), fourcc, self.fps, self.frame_size)
         if self.out.isOpened():
             self.can_acquire = True
-        # TODO open CSV file for scoring save
+        filename_csv = self.make_csv_filename(filename)
+        self.csv_out = open(filename_csv, 'w')
+
+    @staticmethod
+    def make_raw_filename(video_filename):
+        import os
+        dirname = os.path.dirname(video_filename)
+        basename, _ = os.path.splitext(os.path.basename(video_filename))
+        filename = os.path.join(dirname, basename + '_raw.avi')
+        return filename
+
+    @staticmethod
+    def make_csv_filename(video_filename):
+        import os
+        import glob
+        dirname = os.path.dirname(video_filename)
+        basename, _ = os.path.splitext(os.path.basename(video_filename))
+        gl = os.path.join(dirname, basename + '_????.csv')
+        ex_csv_files = glob.glob(gl)
+        if len(ex_csv_files) == 0:
+            filename = os.path.join(dirname, basename + '_0001.csv')
+        else:
+            ex_nos = [int(s[-8:-4]) for s in ex_csv_files]
+            csv_no = max(ex_nos) + 1
+            csv_no = str(csv_no).zfill(4)
+            filename = os.path.join(dirname, basename + '_' + csv_no + '.csv')
+        return filename
 
     @QtCore.pyqtSlot()
     def _query_frame(self):
-        ret, frame = self._cameraDevice.read()
-        h, w, _ = frame.shape
-        frame = cv2.resize(frame, (int(w/2), int(h/2)), interpolation=cv2.INTER_AREA)
+        if (not self.from_video) or (self.acquiring and not self.paused):
+            ret, frame = self._cameraDevice.read()
+            if ret:
+                if self.from_video:
+                    self.frame_no = self._cameraDevice.get(cv2.CAP_PROP_FRAME_COUNT)
+                    self.frame_pos_signal.emit(self.frame_no)
+                else:
+                    self.frame_no += 1
+                h, w, _ = frame.shape
+                if not self.from_video:
+                    frame = cv2.resize(frame, (int(w/2), int(h/2)), interpolation=cv2.INTER_AREA)
 
-        if self.mirrored:
-            frame = cv2.flip(frame, 1)
+                if self.mirrored:
+                    frame = cv2.flip(frame, 1)
+                if self.save_raw_video and self.raw_out and self.acquiring:
+                    self.raw_out.write(frame)
 
-        self.process_frame(frame)
+                self.process_frame(frame)
 
-        if self.out and self.acquiring:
-            self.out.write(frame)
-        self.new_frame.emit(frame)
+                if self.out and self.acquiring:
+                    self.out.write(frame)
+                self.new_frame.emit(frame)
+            else:
+                self.video_finished_signal.emit()
+                self.paused = True
+
         if self.to_release:
             self.release()
 
     def add_timestamp_string(self, frame):
-        if self.acquiring:
+        if self.acquiring and self.display_time:
             h, w, _ = frame.shape
-            cur_time = str(datetime.datetime.now() - self.start_time)[:-4]
+            cur_time = str(self.get_cur_time())[:-4]
             font = cv2.FONT_HERSHEY_DUPLEX
             # noinspection PyUnusedLocal
             t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
             tpt = 5, h - 5
             cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 0, 255), 1)
+            cur_frame = str(self.frame_no)
+            t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
+            tpt = 5, h - 5 - t_size[1]
+            cv2.putText(frame, cur_frame, tpt, font, 0.5, (0, 255, 255), 1)
+
+    def get_cur_time(self):
+        if self.from_video:
+            return datetime.timedelta(milliseconds=self._cameraDevice.get(cv2.CAP_PROP_POS_MSEC))
+        else:
+            return datetime.datetime.now() - self.start_time
 
     @QtCore.pyqtSlot()
     def cleanup(self):
@@ -157,7 +257,8 @@ class CameraDevice(QtCore.QObject):
         if self.out:
             self.out.release()
             self.out = None
-            # TODO close CSV file
+        if self.csv_out:
+            self.csv_out.close()
         if self.thread:
             self.thread.quit()
 
@@ -167,20 +268,21 @@ class CameraDevice(QtCore.QObject):
 
     @property
     def paused(self):
-        return not self._timer.isActive()
+        return self._paused
 
     @paused.setter
     def paused(self, p):
         self.is_paused_signal.emit(p)
-        if p:
-            self._timer.stop()
-        else:
-            self._timer.start()
+        self._paused = p
 
     @property
     def frame_size(self):
-        w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH)/2)
-        h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT)/2)
+        if self.from_video:
+            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        else:
+            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH) / 2)
+            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT) / 2)
         return int(w), int(h)
 
     @property
@@ -192,30 +294,47 @@ class CameraDevice(QtCore.QObject):
         return fps
 
     # the following definitions are the business logic of the experiment,
-    # they may be overriden for a different experiment
+    # they may be overridden for a different experiment
 
-    dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_O: 'UR', QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_L: 'LR'}
+    dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_O: 'UR',
+                QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_L: 'LR',
+                QtCore.Qt.Key_Space: 'TR'}
+
     rect_coord = {'UL': (lambda w, h: ((3, 3), (int(w*0.3), int(h*0.3)))),
                   'UR': (lambda w, h: ((w-3, 3), (int(w*0.7), int(h*0.3)))),
                   'LL': (lambda w, h: ((3, h-3), (int(w*0.3), int(h*0.7)))),
                   'LR': (lambda w, h: ((w-3, h-3), (int(w*0.7), int(h*0.7))))}
 
+    def init_obj_state(self):
+        self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
+
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
-        if msg[:-1] in self.rect_coord and msg[-1] == '1':
-            self.obj_state[msg[:-1]] = 1
+        if msg == 'TR0':
+            return
+        if msg == 'TR1':
+            trial_on = 1 - self.obj_state['TR']
+            self.obj_state['TR'] = trial_on
+            msg = 'TR' + str(trial_on)
         else:
-            self.obj_state[msg[:-1]] = 0
+            if msg[:-1] in self.rect_coord and msg[-1] == '1':
+                self.obj_state[msg[:-1]] = 1
+            else:
+                self.obj_state[msg[:-1]] = 0
 
-        if self.acquiring and self._timer.isActive():
-            pass  # TODO write to file
+        if self.csv_out and self.acquiring and self._timer.isActive():
+            t = self.get_cur_time()
+            ts = t.seconds + 1.e-6 * t.microseconds
+            self.csv_out.write("{},{},{}\n".format(ts, self.frame_no, msg))
 
     def process_frame(self, frame):
         h, w, _ = frame.shape
         for place, state in self.obj_state.items():
-            if state:
+            if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
+        if self.obj_state['TR']:
+            cv2.rectangle(frame, (0, 0), (w, h), (0, 255, 0), 2)
         self.add_timestamp_string(frame)
 
 

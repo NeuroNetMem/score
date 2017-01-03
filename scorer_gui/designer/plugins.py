@@ -68,7 +68,7 @@ base = os.path.dirname(__file__)
 env = QProcessEnvironment.systemEnvironment()
 env.insert('PYQTDESIGNERPATH', base)
 print(base)
-env.insert('PYTHONPATH', os.path.dirname(base))
+env.insert('PYTHONPATH', os.path.dirname(os.path.dirname(base)))
 print(os.path.dirname(os.path.dirname(base)))
 # Start Designer.
 designer = QProcess()

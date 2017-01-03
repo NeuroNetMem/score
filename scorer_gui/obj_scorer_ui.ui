@@ -170,21 +170,42 @@
      </layout>
     </item>
     <item>
-     <widget class="QSlider" name="videoInSlides">
+     <widget class="QSlider" name="videoInSlider">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QRadioButton" name="mirroredButton">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>Mirrored</string>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QCheckBox" name="displayTsCheckBox">
+        <property name="text">
+         <string>Display timestamps</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="mirroredButton">
+        <property name="text">
+         <string>Mirrored</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="rawVideoCheckBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Save raw video</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -216,10 +237,16 @@
    <property name="text">
     <string>Open Camera...</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
   </action>
   <action name="actionOpen_File">
    <property name="text">
     <string>Open File...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
    </property>
   </action>
   <action name="actionQuit">
@@ -241,13 +268,16 @@
    <property name="text">
     <string>Save to...</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
   </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>CameraWidget</class>
    <extends>QWidget</extends>
-   <header>scorer_gui.gui_qt_thread</header>
+   <header>scorer_gui.obj_scorer_model</header>
   </customwidget>
  </customwidgets>
  <resources>

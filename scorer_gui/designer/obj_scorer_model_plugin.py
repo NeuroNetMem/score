@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtDesigner import QPyDesignerCustomWidgetPlugin
 
-from gui_qt_thread import CameraWidget
+from scorer_gui.obj_scorer_model import CameraWidget
 
 
 class CameraWidgetPlugin(QPyDesignerCustomWidgetPlugin):
@@ -72,7 +72,7 @@ class CameraWidgetPlugin(QPyDesignerCustomWidgetPlugin):
     # Return the name of the module containing the class that implements the
     # custom widget.  It may include a module path.
     def includeFile(self):
-        return "scorer_gui.gui_qt_thread"
+        return "scorer_gui.obj_scorer_model"
 
 # Define the image used for the icon.
 _logo_16x16_xpm = [
