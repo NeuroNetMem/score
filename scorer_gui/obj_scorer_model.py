@@ -44,6 +44,7 @@ class CameraDevice(QtCore.QObject):
     from_video_signal = QtCore.pyqtSignal(bool, name="CameraDevice.from_video_signal")
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
     frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
+    size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -98,6 +99,7 @@ class CameraDevice(QtCore.QObject):
     @QtCore.pyqtSlot(int)
     def change_scale(self, i):
         self.scale = float(self.scales_possible[i])
+        self.size_changed_signal.emit()
 
     @property
     def from_video(self):
@@ -391,6 +393,22 @@ class CameraWidget(QtWidgets.QWidget):
             w, h = self._camera_device.frame_size
             self.setMinimumSize(w, h)
             self.setMaximumSize(w, h)
+            self._camera_device.size_changed_signal.connect(self.size_changed)
+
+    @QtCore.pyqtSlot()
+    def size_changed(self):
+        w, h = self._camera_device.frame_size
+        self.setMinimumSize(w, h)
+        self.setMaximumSize(w, h)
+        self.updateGeometry()
+
+    def sizeHint(self):
+        if self._camera_device:
+            w, h = self._camera_device.frame_size
+            return QtCore.QSize(w, h)
+        else:
+            return QtCore.QSize(800, 600)
+
 
     @QtCore.pyqtSlot(np.ndarray)
     def _on_new_frame(self, frame):

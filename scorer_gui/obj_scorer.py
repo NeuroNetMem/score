@@ -165,7 +165,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     def keyReleaseEvent(self, event):
         if self.device:
-            if event.key() in self.device.dir_keys:
+            if not event.isAutoRepeat() and event.key() in self.device.dir_keys:
                 msg = CameraDevice.dir_keys[event.key()] + '0'
                 self.key_action.emit(msg)
         event.accept()
