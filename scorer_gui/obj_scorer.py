@@ -48,7 +48,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rawVideoCheckBox.setChecked(True)
             self.ui.rawVideoCheckBox.setEnabled(True)
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
+            self.device.size_changed_signal.connect(self.video_size_changed)
         self.ui.cameraWidget.set_device(self.device)
+
+    @QtCore.pyqtSlot()
+    def video_size_changed(self):
+        self.updateGeometry()
 
     @QtCore.pyqtSlot()
     def video_finished(self):

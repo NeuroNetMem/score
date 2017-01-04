@@ -330,7 +330,7 @@ class CameraDevice(QtCore.QObject):
 
     dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_O: 'UR',
                 QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_L: 'LR',
-                QtCore.Qt.Key_Space: 'TR'}
+                QtCore.Qt.Key_T: 'TR'}
 
     rect_coord = {'UL': (lambda w, h: ((3, 3), (int(w*0.3), int(h*0.3)))),
                   'UR': (lambda w, h: ((w-3, 3), (int(w*0.7), int(h*0.3)))),
