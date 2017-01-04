@@ -1,3 +1,4 @@
+# noinspection PyPackageRequirements
 import cv2
 import numpy as np
 import time
@@ -44,6 +45,9 @@ class CameraDevice(QtCore.QObject):
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
     frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
 
+    scales_possible = ['0.5', '0.8', '1', '1.5', '2']
+    scale_init = 1
+
     def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None):
         super(CameraDevice, self).__init__(parent)
 
@@ -53,9 +57,11 @@ class CameraDevice(QtCore.QObject):
         self._from_video = False
         self.display_time = True
         self.save_raw_video = True
+        self.filename = None
         self.out = None
         self.raw_out = None
         self.csv_out = None
+        self.scale = float(self.scales_possible[self.scale_init])
         self._can_acquire = False
         self._acquiring = False
         self._paused = False
@@ -88,6 +94,10 @@ class CameraDevice(QtCore.QObject):
         self.thread = QtCore.QThread()
         self.moveToThread(self.thread)
         self.thread.start()
+
+    @QtCore.pyqtSlot(int)
+    def change_scale(self, i):
+        self.scale = float(self.scales_possible[i])
 
     @property
     def from_video(self):
@@ -157,14 +167,33 @@ class CameraDevice(QtCore.QObject):
 
     @QtCore.pyqtSlot(str)
     def set_out_video_file(self, filename):
+        self.filename = filename
+        self.open_files()
+
+    def open_files(self):
+        filename = self.filename
+        print("opening output file: ", filename, "...")
+        import platform
+        if platform.system() == 'Darwin':
+            codec_string = 'mp4v'
+        else:
+            codec_string = 'DIVX'
+        fourcc = cv2.VideoWriter_fourcc(*codec_string)
         if self.out:
             self.out.release()
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self.out = None
         self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size)
         if self.save_raw_video:
+            if self.raw_out:
+                self.raw_out.release()
+                self.raw_out = None
             self.raw_out = cv2.VideoWriter(self.make_raw_filename(filename), fourcc, self.fps, self.frame_size)
         if self.out.isOpened():
             self.can_acquire = True
+            print("Success")
+        else:
+            import warnings
+            warnings.warn("Can't open output file!!")
         filename_csv = self.make_csv_filename(filename)
         self.csv_out = open(filename_csv, 'w')
 
@@ -195,7 +224,7 @@ class CameraDevice(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def _query_frame(self):
-        if not self.paused and ((not self.from_video) or (self.acquiring)):
+        if not self.paused and (not self.from_video or self.acquiring):
             ret, frame = self._cameraDevice.read()
             if ret:
                 if self.from_video:
@@ -205,7 +234,7 @@ class CameraDevice(QtCore.QObject):
                     self.frame_no += 1
                 h, w, _ = frame.shape
                 if not self.from_video:
-                    frame = cv2.resize(frame, (int(w/2), int(h/2)), interpolation=cv2.INTER_AREA)
+                    frame = cv2.resize(frame, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_AREA)
 
                 if self.mirrored:
                     frame = cv2.flip(frame, 1)
@@ -282,8 +311,8 @@ class CameraDevice(QtCore.QObject):
             w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT))
         else:
-            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH) / 2)
-            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT) / 2)
+            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
+            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
         return int(w), int(h)
 
     @property

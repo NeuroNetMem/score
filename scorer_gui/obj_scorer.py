@@ -72,6 +72,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if val:
             self.ui.pauseButton.setEnabled(True)
             self.ui.stopButton.setEnabled(True)
+            self.ui.scaleComboBox.setEnabled(False)
         else:
             self.ui.pauseButton.setEnabled(False)
             self.ui.stopButton.setEnabled(False)
@@ -136,6 +137,11 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
+        self.ui.scaleComboBox.addItems(self.device.scales_possible)
+        self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
+        self.ui.scaleComboBox.setEnabled(True)
+        self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
+
 
     def set_video(self, video_filename):
         import os
@@ -148,6 +154,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.videoInSlider.setMinimum(0)
         self.ui.videoInSlider.setMaximum(last_frame)
         self.ui.actionSave_to.setEnabled(True)
+        self.ui.scaleComboBox.setEnabled(False)
 
     def keyPressEvent(self, event):
         if self.device:
