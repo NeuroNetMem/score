@@ -178,8 +178,11 @@ class CameraDevice(QtCore.QObject):
         import platform
         if platform.system() == 'Darwin':
             codec_string = 'mp4v'
-        else:
-            codec_string = 'DIVX'
+        elif platform.system() == 'Linux':
+            codec_string = 'MJPG'
+        elif platform.system() == 'Windows':
+            codec_string = 'MSVC'
+
         fourcc = cv2.VideoWriter_fourcc(*codec_string)
         if self.out:
             self.out.release()
