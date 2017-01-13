@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1040, 850)
+        MainWindow.resize(947, 850)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -120,7 +120,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addLayout(self.horizontalLayout_4)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1040, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 947, 22))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -141,8 +141,11 @@ class Ui_MainWindow(object):
         self.actionPrint.setObjectName("actionPrint")
         self.actionSave_to = QtWidgets.QAction(MainWindow)
         self.actionSave_to.setObjectName("actionSave_to")
+        self.actionOpen_Session = QtWidgets.QAction(MainWindow)
+        self.actionOpen_Session.setObjectName("actionOpen_Session")
         self.menuFile.addAction(self.actionOpen_Camera)
         self.menuFile.addAction(self.actionOpen_File)
+        self.menuFile.addAction(self.actionOpen_Session)
         self.menuFile.addAction(self.actionSave_to)
         self.menuFile.addAction(self.actionQuit)
         self.menubar.addAction(self.menuFile.menuAction())
@@ -177,9 +180,11 @@ class Ui_MainWindow(object):
         self.actionPrint.setText(_translate("MainWindow", "Print"))
         self.actionSave_to.setText(_translate("MainWindow", "Save to..."))
         self.actionSave_to.setShortcut(_translate("MainWindow", "Ctrl+S"))
+        self.actionOpen_Session.setText(_translate("MainWindow", "Open Session..."))
 
 from scorer_gui.obj_scorer_model import CameraWidget
-import scorer_gui.play_rc
+import obj_rc
+import scorer_gui.scorer_gui.obj_rc
 
 if __name__ == "__main__":
     import sys

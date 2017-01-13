@@ -1,7 +1,63 @@
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
+from PyQt5 import QtGui
+
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
 from scorer_gui.obj_scorer_model import CameraDevice, find_how_many_cameras
+from scorer_gui.trial_dialog_ui import Ui_TrialDialog
+
+
+class TrialDialog(QtWidgets.QDialog):
+    def __init__(self, caller=None, trial_params=None, locations=None):
+        # noinspection PyUnresolvedReferences
+        flags_ = QtCore.Qt.WindowFlags()
+        super(TrialDialog, self).__init__(flags=flags_)
+        self.ui = Ui_TrialDialog()
+        self.ui.setupUi(self)
+        self.ui.objectComboBox.currentIndexChanged.connect(self.update_object_image)
+        if caller:
+            self.ui.addTrialButton.clicked.connect(caller.add_trial)
+            self.ui.skipTrialButton.clicked.connect(caller.skip_trial)
+        if locations:
+            self.ui.location1ComboBox.addItems(locations)
+            self.ui.location2ComboBox.addItems(locations)
+            self.locations = locations
+        # object codes are derived by the filenames of the images in the resource file
+        d = QtCore.QDir(':/obj_images')
+        l = d.entryList()
+        self.obj_idxs = [int(s[:-4]) for s in l].sort()
+        self.ui.objectComboBox.addItems(self.obj_idxs)
+
+        self.set_values(trial_params)
+
+    # noinspection PyUnusedLocal
+    @QtCore.pyqtSlot(int)
+    def update_object_change(self, i):
+        self.update()
+
+    def paintEvent(self, e):
+        p = QtGui.QPainter(self.ui.objectFrame)
+        obj_idx = self.obj_idxs[self.ui.objectComboBox.currentIndex()]
+        image = QtGui.QImage(":/obj_images/" + str(obj_idx) + '.JPG')  # TODO scale image
+        p.drawImage(QtCore.QPoint(0, 0), image)
+
+    def set_values(self, values):
+        self.ui.sessionLineEdit.setText(str(values['session']))
+        self.ui.runLineEdit.setText(str(values['run_nr']))
+        self.ui.trialLineEdit.setText(str(values['trial_nr']))
+        self.ui.subjectLineEdit.setText(str(values['rat']))
+        self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
+        self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
+        self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
+
+    def get_values(self):
+        values = {'session': int(self.ui.sessionLineEdit.text()), 'run_nr': int(self.ui.runLineEdit.text()),
+                  'trial_nr': int(self.ui.trialLineEdit.text()), 'rat': int(self.ui.subjectLineEdit.text()),
+                  'loc_1': self.locations[self.ui.location1ComboBox.currentIndex()],
+                  'loc_2': self.locations[self.ui.location2ComboBox.currentIndex()],
+                  'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()]}
+
+        return values
 
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
@@ -14,10 +70,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setMenuBar(self.ui.menubar)
+        self.session = None
         self._device = None
         self.ui.actionQuit.triggered.connect(self.close_all)
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_File.triggered.connect(self.get_video_file_to_open)
+        self.ui.actionOpen_Session.triggered.connect(self.get_session_file_to_open)
         self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
         self.ui.actionSave_to.setEnabled(False)
         self.ui.rawVideoCheckBox.setEnabled(False)
@@ -114,6 +172,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot()
     def get_video_file_to_open(self):
         import os
+
+        if self.session:
+            msg = QtWidgets.QErrorMessage()
+            msg.showMessage('session processing from video not implemented yet, use camera')  # FIXME
+            msg.exec_()
+            return
+
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video File",
                                                            os.getcwd(), "Videos (*.avi)")
@@ -135,10 +200,16 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.destLabel.setText(os.path.basename(save_video_file))
             self.ui.rawVideoCheckBox.setEnabled(False)
 
+    def get_session_file_to_open(self):
+
+        session_file = ['dummy']
+
+        self.session = session_file
+
     def set_camera(self, camera_id):
         if self.device:
             self.device.cleanup()
-        self.device = CameraDevice(camera_id=camera_id, mirrored=False)
+        self.device = CameraDevice(camera_id=camera_id, mirrored=False, session=self.session)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
@@ -146,7 +217,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
         self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
-
 
     def set_video(self, video_filename):
         import os

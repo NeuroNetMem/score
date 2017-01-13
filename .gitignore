@@ -133,3 +133,4 @@ ENV/
 .idea/
 
 scratch/
+/scorer_gui/resources/objects/

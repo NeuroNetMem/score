@@ -34,6 +34,7 @@ class OpenCVQImage(QtGui.QImage):
                                            QtGui.QImage.Format_RGB888)
 
 
+# the camera model for the Camera acquisition
 class CameraDevice(QtCore.QObject):
     _DEFAULT_FPS = 15
 
@@ -49,12 +50,13 @@ class CameraDevice(QtCore.QObject):
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
 
-    def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None):
+    def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None, session=None):
         super(CameraDevice, self).__init__(parent)
 
         self.obj_state = {}
         self.init_obj_state()
         self.mirrored = mirrored
+        self.session = session
         self._from_video = False
         self.display_time = True
         self.save_raw_video = True
@@ -143,6 +145,7 @@ class CameraDevice(QtCore.QObject):
     @QtCore.pyqtSlot()
     def start_acquisition(self):
         if self.can_acquire:
+
             if self.acquiring:  # must be paused
                 self.paused = False
                 self.is_acquiring_signal.emit(True)
@@ -176,6 +179,7 @@ class CameraDevice(QtCore.QObject):
         filename = self.filename
         print("opening output file: ", filename, "...")
         import platform
+        codec_string = ''
         if platform.system() == 'Darwin':
             codec_string = 'mp4v'
         elif platform.system() == 'Linux':
@@ -411,7 +415,6 @@ class CameraWidget(QtWidgets.QWidget):
             return QtCore.QSize(w, h)
         else:
             return QtCore.QSize(800, 600)
-
 
     @QtCore.pyqtSlot(np.ndarray)
     def _on_new_frame(self, frame):
