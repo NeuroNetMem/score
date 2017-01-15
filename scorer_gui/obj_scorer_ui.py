@@ -97,6 +97,12 @@ class Ui_MainWindow(object):
         self.displayTsCheckBox = QtWidgets.QCheckBox(self.centralwidget)
         self.displayTsCheckBox.setObjectName("displayTsCheckBox")
         self.horizontalLayout_3.addWidget(self.displayTsCheckBox)
+        self.rotateComboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.rotateComboBox.setObjectName("rotateComboBox")
+        self.horizontalLayout_3.addWidget(self.rotateComboBox)
+        self.label_4 = QtWidgets.QLabel(self.centralwidget)
+        self.label_4.setObjectName("label_4")
+        self.horizontalLayout_3.addWidget(self.label_4)
         self.mirroredButton = QtWidgets.QCheckBox(self.centralwidget)
         self.mirroredButton.setObjectName("mirroredButton")
         self.horizontalLayout_3.addWidget(self.mirroredButton)
@@ -167,6 +173,7 @@ class Ui_MainWindow(object):
         self.label_2.setText(_translate("MainWindow", "Writing to:"))
         self.destLabel.setText(_translate("MainWindow", "NO DEST"))
         self.displayTsCheckBox.setText(_translate("MainWindow", "Display timestamps"))
+        self.label_4.setText(_translate("MainWindow", "Rotate (degrees)"))
         self.mirroredButton.setText(_translate("MainWindow", "Mirrored"))
         self.rawVideoCheckBox.setText(_translate("MainWindow", "Save raw video"))
         self.label_3.setText(_translate("MainWindow", "Image scale"))
@@ -183,8 +190,8 @@ class Ui_MainWindow(object):
         self.actionOpen_Session.setText(_translate("MainWindow", "Open Session..."))
 
 from scorer_gui.obj_scorer_model import CameraWidget
-import obj_rc
-import scorer_gui.scorer_gui.obj_rc
+import scorer_gui.obj_rc
+import scorer_gui.play_rc
 
 if __name__ == "__main__":
     import sys

@@ -49,13 +49,18 @@ class CameraDevice(QtCore.QObject):
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
-
+    rotate_options = [0, 90, 180, 270]
+    rotate_functions = {0: (lambda img: img),
+                        90: (lambda img: cv2.flip(cv2.transpose(img), 1)),
+                        180: (lambda img: cv2.flip(img, -1)),
+                        270: (lambda img: cv2.flip(cv2.transpose(img), 0))}
     def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None, session=None):
         super(CameraDevice, self).__init__(parent)
 
         self.obj_state = {}
         self.init_obj_state()
         self.mirrored = mirrored
+        self.rotate_angle = 0
         self.session = session
         self._from_video = False
         self.display_time = True
@@ -162,6 +167,12 @@ class CameraDevice(QtCore.QObject):
     def set_mirror(self, mirrored):
         self.mirrored = mirrored
 
+    @QtCore.pyqtSlot(int)
+    def set_rotate(self, i):
+        self.rotate_angle = self.rotate_options[i]
+        self.size_changed_signal.emit()
+
+
     @QtCore.pyqtSlot(bool)
     def set_raw_out(self, val):
         self.save_raw_video = val
@@ -245,6 +256,7 @@ class CameraDevice(QtCore.QObject):
                 if not self.from_video:
                     frame = cv2.resize(frame, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_AREA)
 
+                frame = self.rotate_functions[self.rotate_angle](frame)
                 if self.mirrored:
                     frame = cv2.flip(frame, 1)
                 if self.save_raw_video and self.raw_out and self.acquiring:
@@ -322,6 +334,8 @@ class CameraDevice(QtCore.QObject):
         else:
             w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
             h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
+            if self.rotate_angle in (90, 270):
+                w, h = h, w
         return int(w), int(h)
 
     @property

@@ -10,5 +10,5 @@ pyrcc5 resources/objects/obj.qrc -o obj_rc.py
 
 sed -i '' "s/play_rc/scorer_gui.play_rc/g" obj_scorer_ui.py
 sed -i '' "s/play_rc/scorer_gui.play_rc/g" trial_dialog_ui.py
-sed -i '' "s/play_rc/scorer_gui.obj_rc/g" obj_scorer_ui.py
-sed -i '' "s/play_rc/scorer_gui.obj_rc/g" trial_dialog_ui.py
+sed -i '' "s/obj_rc/scorer_gui.obj_rc/g" obj_scorer_ui.py
+sed -i '' "s/obj_rc/scorer_gui.obj_rc/g" trial_dialog_ui.py

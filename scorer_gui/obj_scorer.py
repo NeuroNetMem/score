@@ -93,6 +93,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.key_action.connect(self._device.obj_state_change)
             self.ui.mirroredButton.setEnabled(True)
             self.ui.mirroredButton.toggled.connect(self.device.set_mirror)
+            self.ui.rotateComboBox.setEnabled(True)
+            self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
             self.device.can_acquire_signal.connect(self.change_acquisition_state)
             self.device.is_acquiring_signal.connect(self.acquisition_started_stopped)
             self.device.is_paused_signal.connect(self.has_paused)
@@ -217,6 +219,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
         self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
+        self.ui.rotateComboBox.addItems([str(i) for i in self.device.rotate_options])
+        self.ui.rotateComboBox.setEnabled(True)
+        self.ui.rotateComboBox.setCurrentIndex(0)
+        self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
+
+
 
     def set_video(self, video_filename):
         import os

@@ -220,6 +220,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QComboBox" name="rotateComboBox"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Rotate (degrees)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QCheckBox" name="mirroredButton">
         <property name="text">
          <string>Mirrored</string>
