@@ -172,7 +172,6 @@ class CameraDevice(QtCore.QObject):
         self.rotate_angle = self.rotate_options[i]
         self.size_changed_signal.emit()
 
-
     @QtCore.pyqtSlot(bool)
     def set_raw_out(self, val):
         self.save_raw_video = val
