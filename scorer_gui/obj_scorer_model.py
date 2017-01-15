@@ -54,6 +54,7 @@ class CameraDevice(QtCore.QObject):
                         90: (lambda img: cv2.flip(cv2.transpose(img), 1)),
                         180: (lambda img: cv2.flip(img, -1)),
                         270: (lambda img: cv2.flip(cv2.transpose(img), 0))}
+
     def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None, session=None):
         super(CameraDevice, self).__init__(parent)
 
@@ -171,7 +172,6 @@ class CameraDevice(QtCore.QObject):
     def set_rotate(self, i):
         self.rotate_angle = self.rotate_options[i]
         self.size_changed_signal.emit()
-
 
     @QtCore.pyqtSlot(bool)
     def set_raw_out(self, val):
