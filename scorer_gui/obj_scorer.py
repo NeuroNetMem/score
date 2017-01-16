@@ -3,8 +3,10 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
-from scorer_gui.obj_scorer_model import CameraDevice, find_how_many_cameras
+from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager, find_how_many_cameras
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
+# noinspection PyUnresolvedReferences
+import scorer_gui.obj_rc
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -98,12 +100,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.can_acquire_signal.connect(self.change_acquisition_state)
             self.device.is_acquiring_signal.connect(self.acquisition_started_stopped)
             self.device.is_paused_signal.connect(self.has_paused)
-            self.device.video_finished_signal.connect(self.video_finished)
-            self.device.frame_pos_signal.connect(self.ui.videoInSlider.setValue)
             self.ui.playButton.clicked.connect(self.device.start_acquisition)
             self.ui.pauseButton.clicked.connect(self.device.set_paused)
             self.ui.stopButton.clicked.connect(self.device.stop_acquisition)
-            self.ui.videoInSlider.sliderMoved.connect(self.device.skip_to_frame)
             self.ui.rawVideoCheckBox.toggled.connect(self.device.set_raw_out)
             self.ui.rawVideoCheckBox.setChecked(True)
             self.ui.rawVideoCheckBox.setEnabled(True)
@@ -211,7 +210,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def set_camera(self, camera_id):
         if self.device:
             self.device.cleanup()
-        self.device = CameraDevice(camera_id=camera_id, mirrored=False, session=self.session)
+        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
@@ -224,13 +223,11 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.rotateComboBox.setCurrentIndex(0)
         self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
 
-
-
     def set_video(self, video_filename):
         import os
         if self.device:
             self.device.cleanup()
-        self.device = CameraDevice(video_file=video_filename, mirrored=False)
+        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session)
         self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
         last_frame = self.device.video_last_frame()
         self.ui.videoInSlider.setEnabled(True)
@@ -238,18 +235,21 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.videoInSlider.setMaximum(last_frame)
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
+        self.device.video_finished_signal.connect(self.video_finished)
+        self.device.frame_pos_signal.connect(self.ui.videoInSlider.setValue)
+        self.ui.videoInSlider.sliderMoved.connect(self.device.skip_to_frame)
 
     def keyPressEvent(self, event):
         if self.device:
             if not event.isAutoRepeat() and event.key() in self.device.dir_keys:
-                msg = CameraDevice.dir_keys[event.key()] + '1'
+                msg = DeviceManager.dir_keys[event.key()] + '1'
                 self.key_action.emit(msg)
         event.accept()
 
     def keyReleaseEvent(self, event):
         if self.device:
             if not event.isAutoRepeat() and event.key() in self.device.dir_keys:
-                msg = CameraDevice.dir_keys[event.key()] + '0'
+                msg = DeviceManager.dir_keys[event.key()] + '0'
                 self.key_action.emit(msg)
         event.accept()
 

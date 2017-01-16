@@ -8,6 +8,8 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
+from scorer_gui.session_manager import VideoSessionManager, LiveSessionManager
+
 
 def find_how_many_cameras():
     print("NOTE: warnings about cameras failing to initialize here below can safely be ignored.")
@@ -35,16 +37,11 @@ class OpenCVQImage(QtGui.QImage):
 
 
 # the camera model for the Camera acquisition
-class CameraDevice(QtCore.QObject):
-    _DEFAULT_FPS = 15
-
+class DeviceManager(QtCore.QObject):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
     can_acquire_signal = QtCore.pyqtSignal(bool, name="CameraDevice.can_acquire_signal")
     is_acquiring_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_acquiring_signal")
     is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
-    from_video_signal = QtCore.pyqtSignal(bool, name="CameraDevice.from_video_signal")
-    video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
-    frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
@@ -55,54 +52,57 @@ class CameraDevice(QtCore.QObject):
                         180: (lambda img: cv2.flip(img, -1)),
                         270: (lambda img: cv2.flip(cv2.transpose(img), 0))}
 
-    def __init__(self, camera_id=0, mirrored=False, video_file=None, parent=None, session=None):
-        super(CameraDevice, self).__init__(parent)
+    def __init__(self, parent=None, session_file=None):
+        super(DeviceManager, self).__init__(parent)
 
+        # initialize tracking controller
         self.obj_state = {}
         self.init_obj_state()
-        self.mirrored = mirrored
+
+        # initializing image display
+        self.mirrored = False
         self.rotate_angle = 0
-        self.session = session
-        self._from_video = False
-        self.display_time = True
-        self.save_raw_video = True
-        self.filename = None
-        self.out = None
-        self.raw_out = None
-        self.csv_out = None
         self.scale = float(self.scales_possible[self.scale_init])
         self._can_acquire = False
         self._acquiring = False
         self._paused = False
-        self.to_release = False
-        if video_file:
-            # noinspection PyArgumentList
-            self._cameraDevice = cv2.VideoCapture(video_file)
-            if not self._cameraDevice.isOpened():
-                raise RuntimeError("Could not open video file {}".format(video_file))
-            self.from_video = True
-        else:
-            # noinspection PyArgumentList
-            self._cameraDevice = cv2.VideoCapture(camera_id)
-            if not self._cameraDevice.isOpened():
-                raise RuntimeError("Could not initialize camera id {}".format(camera_id))
-            self.from_video = False
 
+        if session_file:
+            self.session = self.set_session(session_file)
+
+        # initialize output
+        self.filename = None
+        self.out = None
+        self.raw_out = None
+        self.csv_out = None
+        self.display_time = True
+        self.save_raw_video = True
+
+        self.thread = None
+        # this flag to close the manager
+        self.to_release = False
+
+        self._device = self.init_device()
+        # prepare timer
         self._timer = QtCore.QTimer(self)
         # noinspection PyUnresolvedReferences
-        self._timer.timeout.connect(self._query_frame)
+        self._timer.timeout.connect(self.query_frame)
         self._timer.setInterval(1000 / self.fps)
-        if not self.from_video:
-            self._timer.start()
-        self.paused = False
-        if self.from_video:
-            self._query_frame()
         self.start_time = datetime.datetime.now()
         self.frame_no = 0
 
+    def init_thread(self):
+        # throw it into a different thread
         self.thread = QtCore.QThread()
         self.moveToThread(self.thread)
         self.thread.start()
+
+    def init_device(self):
+        return None  # "pure virtual" function
+
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
+    def set_session(self, filename):
+        return None  # pure virtual
 
     @QtCore.pyqtSlot(int)
     def change_scale(self, i):
@@ -110,25 +110,8 @@ class CameraDevice(QtCore.QObject):
         self.size_changed_signal.emit()
 
     @property
-    def from_video(self):
-        return self._from_video
-
-    @from_video.setter
-    def from_video(self, val):
-        self._from_video = val
-        self.from_video_signal.emit(val)
-
-    def video_last_frame(self):
-        if self.from_video:
-            return self._cameraDevice.get(cv2.CAP_PROP_FRAME_COUNT)
-
-    @QtCore.pyqtSlot(int)
-    def skip_to_frame(self, val):
-        if self.from_video:
-            self._cameraDevice.set(cv2.CAP_PROP_POS_FRAMES, float(val))
-
-    @property
     def can_acquire(self):
+        # this means that we have a input and output devices ready
         return self._can_acquire
 
     @can_acquire.setter
@@ -138,6 +121,8 @@ class CameraDevice(QtCore.QObject):
 
     @property
     def acquiring(self):
+        # this means that we are acquiring
+        #  TODO veryify if it can be merged with paused
         return self._acquiring
 
     @acquiring.setter
@@ -151,7 +136,10 @@ class CameraDevice(QtCore.QObject):
     @QtCore.pyqtSlot()
     def start_acquisition(self):
         if self.can_acquire:
-
+            # TODO here setup new trial
+            # 1. ask for confirmation of trial parameters
+            # 2. make up new video file
+            # 3. make up splash screen
             if self.acquiring:  # must be paused
                 self.paused = False
                 self.is_acquiring_signal.emit(True)
@@ -163,6 +151,7 @@ class CameraDevice(QtCore.QObject):
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
         self.acquiring = False
+        # TODO close trial if session
 
     @QtCore.pyqtSlot(bool)
     def set_mirror(self, mirrored):
@@ -242,36 +231,8 @@ class CameraDevice(QtCore.QObject):
             filename = os.path.join(dirname, basename + '_' + csv_no + '.csv')
         return filename
 
-    @QtCore.pyqtSlot()
-    def _query_frame(self):
-        if not self.paused and (not self.from_video or self.acquiring):
-            ret, frame = self._cameraDevice.read()
-            if ret:
-                if self.from_video:
-                    self.frame_no = int(self._cameraDevice.get(cv2.CAP_PROP_POS_FRAMES))
-                    self.frame_pos_signal.emit(self.frame_no)
-                else:
-                    self.frame_no += 1
-                h, w, _ = frame.shape
-                if not self.from_video:
-                    frame = cv2.resize(frame, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_AREA)
-
-                frame = self.rotate_functions[self.rotate_angle](frame)
-                if self.mirrored:
-                    frame = cv2.flip(frame, 1)
-                if self.save_raw_video and self.raw_out and self.acquiring:
-                    self.raw_out.write(frame)
-
-                self.process_frame(frame)
-
-                if self.out and self.acquiring:
-                    self.out.write(frame)
-                self.new_frame.emit(frame)
-            else:
-                self.video_finished_signal.emit()
-                self.paused = True
-        if self.to_release:
-            self.release()
+    def query_frame(self):
+        pass  # pure virtual function
 
     def add_timestamp_string(self, frame):
         if self.acquiring and self.display_time:
@@ -288,23 +249,21 @@ class CameraDevice(QtCore.QObject):
             cv2.putText(frame, cur_frame, tpt, font, 0.5, (0, 255, 255), 1)
 
     def get_cur_time(self):
-        if self.from_video:
-            return datetime.timedelta(milliseconds=self._cameraDevice.get(cv2.CAP_PROP_POS_MSEC))
-        else:
-            return datetime.datetime.now() - self.start_time
+        return datetime.timedelta(0)
 
     @QtCore.pyqtSlot()
     def cleanup(self):
         self.can_acquire = False
         self.to_release = True
-        self.thread.wait()
+        if self.thread:
+            self.thread.wait()
 
     def release(self):
         print("releasing camera and stopping")
         self._timer.stop()
         time.sleep(0.5)
-        # if self._cameraDevice:
-        #     self._cameraDevice.release()
+        # if self._device:
+        #     self._device.release()
         if self.out:
             self.out.release()
             self.out = None
@@ -315,6 +274,7 @@ class CameraDevice(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def set_paused(self):
+        # TODO here stop trial
         self.paused = True
 
     @property
@@ -328,23 +288,11 @@ class CameraDevice(QtCore.QObject):
 
     @property
     def frame_size(self):
-        if self.from_video:
-            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        else:
-            w = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
-            h = int(self._cameraDevice.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
-            if self.rotate_angle in (90, 270):
-                w, h = h, w
-        return int(w), int(h)
+        return None  # pure virtual
 
     @property
     def fps(self):
-        fps = 15
-        # fps = int(self._camera_device.get(cv2.CAP_PROP_FPS))
-        # if not fps > 0:
-        #     fps = self._DEFAULT_FPS
-        return fps
+        return 0  # pure virtual
 
     # the following definitions are the business logic of the experiment,
     # they may be overridden for a different experiment
@@ -375,6 +323,7 @@ class CameraDevice(QtCore.QObject):
             else:
                 self.obj_state[msg[:-1]] = 0
 
+        # TODO record event in session manager
         if self.csv_out and self.acquiring and self._timer.isActive():
             t = self.get_cur_time()
             ts = t.seconds + 1.e-6 * t.microseconds
@@ -389,6 +338,134 @@ class CameraDevice(QtCore.QObject):
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 255, 0), 2)
         self.add_timestamp_string(frame)
+
+
+class VideoDeviceManager(DeviceManager):
+    video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
+    frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
+
+    def __init__(self, video_file=None, parent=None, session_file=None):
+        self.video_file = video_file
+        super(VideoDeviceManager, self).__init__(parent=parent, session_file=session_file)
+        self.init_thread()
+
+    def init_device(self):
+        # noinspection PyArgumentList
+        cd = cv2.VideoCapture(self.video_file)
+        if not cd.isOpened():
+            raise RuntimeError("Could not open video file {}".format(self.video_file))
+        self.query_frame()
+        return cd
+
+    def set_session(self, filename):
+        return VideoSessionManager(filename)
+
+    def video_last_frame(self):
+        return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
+
+    @QtCore.pyqtSlot()
+    def query_frame(self):
+        if not self.paused and self.acquiring:
+            ret, frame = self._device.read()
+            if ret:
+                self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
+                self.frame_pos_signal.emit(self.frame_no)
+                h, w, _ = frame.shape
+                if self.save_raw_video and self.raw_out and self.acquiring:
+                    self.raw_out.write(frame)
+                self.process_frame(frame)
+
+                if self.out and self.acquiring:
+                    self.out.write(frame)
+                self.new_frame.emit(frame)
+            else:
+                self.video_finished_signal.emit()
+                self.paused = True
+        if self.to_release:
+            self.release()
+
+    @property
+    def frame_size(self):
+        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        return int(w), int(h)
+
+    @QtCore.pyqtSlot(int)
+    def skip_to_frame(self, val):
+        self._device.set(cv2.CAP_PROP_POS_FRAMES, float(val))
+
+    @property
+    def fps(self):
+        fps = int(self._device.get(cv2.CAP_PROP_FPS))
+        return fps
+
+    def get_cur_time(self):
+        return datetime.timedelta(milliseconds=self._device.get(cv2.CAP_PROP_POS_MSEC))
+
+
+class CameraDeviceManager(DeviceManager):
+    _DEFAULT_FPS = 15
+
+    def __init__(self, camera_id=0, parent=None, session_file=None):
+        self.camera_id = camera_id
+        super(CameraDeviceManager, self).__init__(parent=parent, session_file=session_file)
+        self._timer.start()
+        self.init_thread()
+        self.paused = False
+
+
+    def init_device(self):
+        # noinspection PyArgumentList
+        cd = cv2.VideoCapture(self.camera_id)
+        if not cd.isOpened():
+            raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
+        return cd
+
+    def set_session(self, filename):
+        return LiveSessionManager(filename)
+
+    @QtCore.pyqtSlot()
+    def query_frame(self):
+        # TODO show splash screen
+        if not self.paused:
+            ret, frame = self._device.read()
+            if ret:
+                self.frame_no += 1
+                h, w, _ = frame.shape
+                frame = cv2.resize(frame, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_AREA)
+                frame = self.rotate_functions[self.rotate_angle](frame)
+                if self.mirrored:
+                    frame = cv2.flip(frame, 1)
+
+                if self.save_raw_video and self.raw_out and self.acquiring:
+                    self.raw_out.write(frame)
+                self.process_frame(frame)
+
+                if self.out and self.acquiring:
+                    self.out.write(frame)
+                self.new_frame.emit(frame)
+            # else:
+                # TODO notify that camera is not acquiring
+                # self.video_finished_signal.emit()
+                # self.paused = True
+        if self.to_release:
+            self.release()
+
+    @property
+    def frame_size(self):
+        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
+        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
+        if self.rotate_angle in (90, 270):
+            w, h = h, w
+        return int(w), int(h)
+
+    @property
+    def fps(self):
+        fps = self._DEFAULT_FPS
+        return fps
+
+    def get_cur_time(self):
+        return datetime.datetime.now() - self.start_time
 
 
 class CameraWidget(QtWidgets.QWidget):
@@ -419,7 +496,7 @@ class CameraWidget(QtWidgets.QWidget):
     @QtCore.pyqtSlot()
     def size_changed(self):
         w, h = self._camera_device.frame_size
-        self.setMinimumSize(w, h)
+        self.setMinimumSize(w, h)  # TODO rescale so that it fits in maximum size
         self.setMaximumSize(w, h)
         self.updateGeometry()
 
@@ -452,41 +529,13 @@ class CameraWidget(QtWidgets.QWidget):
         painter.drawImage(QtCore.QPoint(0, 0), OpenCVQImage(self._frame))
 
     def keyPressEvent(self, event):
-        if not event.isAutoRepeat() and event.key() in CameraDevice.dir_keys:
-            msg = CameraDevice.dir_keys[event.key()] + '1'
+        if not event.isAutoRepeat() and event.key() in DeviceManager.dir_keys:
+            msg = DeviceManager.dir_keys[event.key()] + '1'
             self.key_action.emit(msg)
         event.accept()
 
     def keyReleaseEvent(self, event):
-        if event.key() in CameraDevice.dir_keys:
-            msg = CameraDevice.dir_keys[event.key()] + '0'
+        if event.key() in DeviceManager.dir_keys:
+            msg = DeviceManager.dir_keys[event.key()] + '0'
             self.key_action.emit(msg)
         event.accept()
-
-
-def _main():
-
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-
-    camera_device = CameraDevice(mirrored=True)
-
-    def close_all():
-        camera_device.cleanup()
-        sys.exit()
-
-    app.quitOnLastWindowClosed = False
-    # noinspection PyUnresolvedReferences
-    app.lastWindowClosed.connect(close_all)
-
-    camera_widget = CameraWidget()
-    camera_widget.set_device(camera_device)
-    # noinspection PyUnresolvedReferences
-    camera_widget.key_action.connect(camera_device.obj_state_change)
-    camera_widget.show()
-
-    app.exec_()
-
-if __name__ == '__main__':
-    _main()

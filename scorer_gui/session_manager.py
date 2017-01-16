@@ -19,3 +19,11 @@ class SessionManager:
 
     def set_event(self, ts, frame_no, msg):
         pass
+
+
+class VideoSessionManager(SessionManager):
+    pass
+
+
+class LiveSessionManager(SessionManager):
+    pass
