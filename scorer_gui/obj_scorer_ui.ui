@@ -297,9 +297,10 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionOpen_Live_Session"/>
+    <addaction name="actionOpen_Video_Session"/>
     <addaction name="actionOpen_Camera"/>
     <addaction name="actionOpen_File"/>
-    <addaction name="actionOpen_Session"/>
     <addaction name="actionSave_to"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -348,9 +349,14 @@
     <string>Ctrl+S</string>
    </property>
   </action>
-  <action name="actionOpen_Session">
+  <action name="actionOpen_Live_Session">
    <property name="text">
-    <string>Open Session...</string>
+    <string>Open Live Session...</string>
+   </property>
+  </action>
+  <action name="actionOpen_Video_Session">
+   <property name="text">
+    <string>Open Video Session...</string>
    </property>
   </action>
  </widget>

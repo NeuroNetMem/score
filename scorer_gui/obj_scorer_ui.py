@@ -147,11 +147,14 @@ class Ui_MainWindow(object):
         self.actionPrint.setObjectName("actionPrint")
         self.actionSave_to = QtWidgets.QAction(MainWindow)
         self.actionSave_to.setObjectName("actionSave_to")
-        self.actionOpen_Session = QtWidgets.QAction(MainWindow)
-        self.actionOpen_Session.setObjectName("actionOpen_Session")
+        self.actionOpen_Live_Session = QtWidgets.QAction(MainWindow)
+        self.actionOpen_Live_Session.setObjectName("actionOpen_Live_Session")
+        self.actionOpen_Video_Session = QtWidgets.QAction(MainWindow)
+        self.actionOpen_Video_Session.setObjectName("actionOpen_Video_Session")
+        self.menuFile.addAction(self.actionOpen_Live_Session)
+        self.menuFile.addAction(self.actionOpen_Video_Session)
         self.menuFile.addAction(self.actionOpen_Camera)
         self.menuFile.addAction(self.actionOpen_File)
-        self.menuFile.addAction(self.actionOpen_Session)
         self.menuFile.addAction(self.actionSave_to)
         self.menuFile.addAction(self.actionQuit)
         self.menubar.addAction(self.menuFile.menuAction())
@@ -187,7 +190,8 @@ class Ui_MainWindow(object):
         self.actionPrint.setText(_translate("MainWindow", "Print"))
         self.actionSave_to.setText(_translate("MainWindow", "Save to..."))
         self.actionSave_to.setShortcut(_translate("MainWindow", "Ctrl+S"))
-        self.actionOpen_Session.setText(_translate("MainWindow", "Open Session..."))
+        self.actionOpen_Live_Session.setText(_translate("MainWindow", "Open Live Session..."))
+        self.actionOpen_Video_Session.setText(_translate("MainWindow", "Open Video Session..."))
 
 from scorer_gui.obj_scorer_model import CameraWidget
 import scorer_gui.obj_rc

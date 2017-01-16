@@ -72,12 +72,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setMenuBar(self.ui.menubar)
-        self.session = None
+        self.session_file = None
         self._device = None
         self.ui.actionQuit.triggered.connect(self.close_all)
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_File.triggered.connect(self.get_video_file_to_open)
-        self.ui.actionOpen_Session.triggered.connect(self.get_session_file_to_open)
+        self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
+        self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
         self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
         self.ui.actionSave_to.setEnabled(False)
         self.ui.rawVideoCheckBox.setEnabled(False)
@@ -108,7 +109,20 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rawVideoCheckBox.setEnabled(True)
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
             self.device.size_changed_signal.connect(self.video_size_changed)
+            self.device.session_set_signal.connect(self.session_was_set)
         self.ui.cameraWidget.set_device(self.device)
+
+    @QtCore.pyqtSlot(bool)
+    def session_was_set(self, s):
+        if s:
+            self.ui.actionOpen_Camera.setEnabled(False)
+            self.ui.actionOpen_File.setEnabled(False)
+            self.ui.actionOpen_Video_Session.setEnabled(False)
+            self.ui.actionOpen_Live_Session.setEnabled(False)
+        else:
+            error = QtWidgets.QErrorMessage()
+            error.showMessage("Error in setting session. Not set.")
+            self.session_file = None
 
     @QtCore.pyqtSlot()
     def video_size_changed(self):
@@ -174,18 +188,31 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def get_video_file_to_open(self):
         import os
 
-        if self.session:
-            msg = QtWidgets.QErrorMessage()
-            msg.showMessage('session processing from video not implemented yet, use camera')  # FIXME
-            msg.exec_()
-            return
-
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video File",
                                                            os.getcwd(), "Videos (*.avi)")
         open_video_file = dialog_out[0]
         if open_video_file:
             self.set_video(open_video_file)
+
+    # noinspection PyArgumentList
+    @QtCore.pyqtSlot()
+    def get_live_session_file_to_open(self):
+        import os
+        # noinspection PyCallByClass,PyTypeChecker
+        dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Live Session File",
+                                                           os.getcwd(), "CSV (*.csv)")
+        self.session_file = dialog_out[0]
+        if self._device and isinstance(self._device, CameraDeviceManager):
+            self._device.set_session(self.session_file)
+        else:
+            self.get_camera_id_to_open()
+
+    # noinspection PyMethodMayBeStatic
+    def get_video_session_file_to_open(self):
+        error = QtWidgets.QErrorMessage()
+        error.showMessage("Session processing from video not implemented yet.")
+        error.exec_()
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
@@ -201,16 +228,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.destLabel.setText(os.path.basename(save_video_file))
             self.ui.rawVideoCheckBox.setEnabled(False)
 
-    def get_session_file_to_open(self):
-
-        session_file = ['dummy']
-
-        self.session = session_file
-
     def set_camera(self, camera_id):
         if self.device:
             self.device.cleanup()
-        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session)
+        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
