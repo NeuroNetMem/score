@@ -96,6 +96,9 @@ class DeviceManager(QtCore.QObject):
         self.start_time = datetime.datetime.now()
         self.frame_no = 0
 
+        self.trial_ongoing = False
+        self.trial_false = False
+
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
@@ -127,7 +130,7 @@ class DeviceManager(QtCore.QObject):
     @property
     def acquiring(self):
         # this means that we are acquiring
-        #  TODO veryify if it can be merged with paused
+        #  TODO verify if it can be merged with paused
         return self._acquiring
 
     @acquiring.setter
@@ -141,9 +144,9 @@ class DeviceManager(QtCore.QObject):
     def trial_setup(self):
         from scorer_gui.obj_scorer import TrialDialog
         scheme = self.session.get_scheme_trial_info()
-        ready = False
         self.dialog = TrialDialog(caller=self, trial_params=scheme)
-        while not ready:
+        self.dialog.set_readonly(True)
+        while True:
             if self.dialog.exec_():
                 self.session.set_trial_info(self.dialog.get_values())
                 break
@@ -178,6 +181,7 @@ class DeviceManager(QtCore.QObject):
         if self.session:
             self.session.add_trial()
             self.dialog.set_values(self.session.get_scheme_trial_info())
+            self.dialog.set_readonly(False)
 
     def skip_trial(self):
         if self.session:
@@ -381,14 +385,20 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
 
+        if not self.trial_ready:
+            return
         if msg == 'TR0':
             return
         if msg == 'TR1':
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
             msg = 'TR' + str(trial_on)
+            if trial_on:
+                self.trial_ongoing = True
+            else:
+                self.trial_ongoing = False
         else:
-            if self.session and not self.session.can_get_events():
+            if self.session and not self.trial_ongoing:
                 return
             if msg[:-1] in self.rect_coord and msg[-1] == '1':
                 self.obj_state[msg[:-1]] = 1
@@ -510,16 +520,17 @@ class CameraDeviceManager(DeviceManager):
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()
+                if ret:
+                    h, w, _ = frame.shape
+                    frame = cv2.resize(frame, (int(w * self.scale), int(h * self.scale)), interpolation=cv2.INTER_AREA)
+                    frame = self.rotate_functions[self.rotate_angle](frame)
+                    if self.mirrored:
+                        frame = cv2.flip(frame, 1)
             if ret:
                 self.frame_no += 1
-                h, w, _ = frame.shape
-                frame = cv2.resize(frame, (int(w*self.scale), int(h*self.scale)), interpolation=cv2.INTER_AREA)
-                frame = self.rotate_functions[self.rotate_angle](frame)
-                if self.mirrored:
-                    frame = cv2.flip(frame, 1)
-
                 if self.save_raw_video and self.raw_out and self.acquiring:
                     self.raw_out.write(frame)
+            if self.splash_screen_countdown == 0:
                 self.process_frame(frame)
 
                 if self.out and self.acquiring:

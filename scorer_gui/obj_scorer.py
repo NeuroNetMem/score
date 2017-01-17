@@ -32,6 +32,15 @@ class TrialDialog(QtWidgets.QDialog):
 
         self.set_values(trial_params)
 
+    def set_readonly(self, ro):
+        self.ui.sessionLineEdit.setReadOnly(ro)
+        self.ui.runLineEdit.setReadOnly(ro)
+        self.ui.trialLineEdit.setReadOnly(ro)
+        self.ui.subjectLineEdit.setReadOnly(ro)
+        self.ui.objectComboBox.setEnabled(not ro)
+        self.ui.location1ComboBox.setEnabled(not ro)
+        self.ui.location2ComboBox.setEnabled(not ro)
+
     # noinspection PyUnusedLocal
     @QtCore.pyqtSlot(int)
     def update_object_change(self, i):
