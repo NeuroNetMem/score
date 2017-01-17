@@ -151,7 +151,9 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="resources/objects/obj.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>stdButtons</sender>

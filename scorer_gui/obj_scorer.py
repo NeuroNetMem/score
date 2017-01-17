@@ -39,6 +39,7 @@ class TrialDialog(QtWidgets.QDialog):
 
     def set_image(self):
         obj_idx = self.get_current_object()
+        # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
         pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
         pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
         self.ui.objectLabel.setPixmap(pixmap)

@@ -36,6 +36,38 @@ class OpenCVQImage(QtGui.QImage):
                                            QtGui.QImage.Format_RGB888)
 
 
+class TrialDialogController(QtCore.QObject):
+    dialog_done_signal = QtCore.pyqtSignal(name="TrialDialogController.dialog_done_signal")
+
+    def __init__(self, caller, locations, parent=None):
+        super(TrialDialogController, self).__init__(parent)
+        self.caller = caller
+        self.scheme = None
+        self.locations = locations
+        self.dialog = None
+        self.ok = False
+
+    def set_scheme(self, scheme):
+        self.scheme = scheme
+
+    def get_values(self):
+        return self.dialog.get_values()
+
+    @QtCore.pyqtSlot()
+    def start_dialog(self):
+        from scorer_gui.obj_scorer import TrialDialog
+        self.dialog = TrialDialog(caller=self.caller, trial_params=self.scheme, locations=self.locations)
+        self.dialog.set_readonly(True)
+        self.ok = self.dialog.exec_()
+        self.dialog_done_signal.emit()
+
+    def exit_status(self):
+        return self.ok
+
+    def set_readonly(self, i):
+        self.dialog.set_readonly(i)
+
+
 # the camera model for the Camera acquisition
 class DeviceManager(QtCore.QObject):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
@@ -44,6 +76,7 @@ class DeviceManager(QtCore.QObject):
     is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
     session_set_signal = QtCore.pyqtSignal(bool, name="CameraDevice.session_set")
+    dialog_trigger_signal = QtCore.pyqtSignal(name="CameraDevice.dialog_trigger_signal")
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -73,8 +106,8 @@ class DeviceManager(QtCore.QObject):
             self.set_session(session_file)
         self.splash_screen = None
         self.splash_screen_countdown = 0
-        self.dialog = None
-
+        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()))
+        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
         # initialize output
         self.video_out_filename = None
         self.out = None
@@ -87,27 +120,41 @@ class DeviceManager(QtCore.QObject):
         # this flag to close the manager
         self.to_release = False
 
-        self._device = self.init_device()
+        self._device = None
+        # self._device = self.init_device()
         # prepare timer
-        self._timer = QtCore.QTimer(self)
-        # noinspection PyUnresolvedReferences
-        self._timer.timeout.connect(self.query_frame)
-        self._timer.setInterval(1000 / self.fps)
+        self.interval = int(1.e3 / self.fps)
         self.start_time = datetime.datetime.now()
         self.frame_no = 0
 
         self.trial_ongoing = False
         self.trial_ready = False
         self.capturing = False
+        # noinspection PyArgumentList
+        print("init_thread: ", int(QtCore.QThread.currentThreadId()))
 
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
-        self._timer.start()
+        print("creating thread: ", self.thread, " id: ")
         self.moveToThread(self.thread)
         self.capturing = True
+        # noinspection PyUnresolvedReferences
+        self.thread.started.connect(self.run)
         self.thread.start()
 
+    @QtCore.pyqtSlot()
+    def run(self):
+        # noinspection PyArgumentList
+        print("running in thread: ", QtCore.QThread.currentThread(), " id: ", int(QtCore.QThread.currentThreadId()))
+        # noinspection PyCallByClass
+        self._timer = QtCore.QTimer()
+        self._timer.setInterval(self.interval)
+        # noinspection PyUnresolvedReferences
+        self._timer.timeout.connect(self.query_frame)
+        self._device = self.init_device()
+        self._timer.start()
+        self.size_changed_signal.emit()
 
     def init_device(self):
         return None  # "pure virtual" function
@@ -146,19 +193,21 @@ class DeviceManager(QtCore.QObject):
         self.is_acquiring_signal.emit(val)
 
     def trial_setup(self):
-        from scorer_gui.obj_scorer import TrialDialog
         print("starting trial")
         scheme = self.session.get_scheme_trial_info()
-        locations = list(self.rect_coord.keys())
-        self.dialog = TrialDialog(caller=self, trial_params=scheme, locations=locations)
-        self.dialog.set_readonly(True)
+        self.dialog.set_scheme(scheme)
+
         while True:
-            if self.dialog.exec_():
+            self.dialog_trigger_signal.emit()
+            loop = QtCore.QEventLoop()
+            # noinspection PyUnresolvedReferences
+            self.dialog.dialog_done_signal.connect(loop.quit)
+            loop.exec_()
+            if self.dialog.exit_status:
                 self.session.set_trial_info(self.dialog.get_values())
                 break
             else:
                 continue
-        self.dialog = None
         self.video_out_filename = self.session.get_video_file_name_for_trial()
         self.open_files()
 
@@ -186,13 +235,13 @@ class DeviceManager(QtCore.QObject):
     def add_trial(self):
         if self.session:
             self.session.add_trial()
-            self.dialog.set_values(self.session.get_scheme_trial_info())
+            self.dialog.set_scheme(self.session.get_scheme_trial_info())
             self.dialog.set_readonly(False)
 
     def skip_trial(self):
         if self.session:
             self.session.skip_trial()
-            self.dialog.set_values(self.session.get_scheme_trial_info())
+            self.dialog.set_scheme(self.session.get_scheme_trial_info())
 
     @QtCore.pyqtSlot()
     def start_acquisition(self):
@@ -223,6 +272,7 @@ class DeviceManager(QtCore.QObject):
 
     @QtCore.pyqtSlot(int)
     def set_rotate(self, i):
+        print('setting rotate')
         self.rotate_angle = self.rotate_options[i]
         self.size_changed_signal.emit()
 
@@ -307,6 +357,7 @@ class DeviceManager(QtCore.QObject):
             filename = os.path.join(dirname, basename + '_' + csv_no + '.csv')
         return filename
 
+    @QtCore.pyqtSlot()
     def query_frame(self):
         pass  # pure virtual function
 
@@ -336,7 +387,6 @@ class DeviceManager(QtCore.QObject):
 
     def release(self):
         print("releasing camera and stopping")
-        self._timer.stop()
         time.sleep(0.5)
         # if self._device:
         #     self._device.release()
@@ -497,9 +547,12 @@ class VideoDeviceManager(DeviceManager):
         try:
             self.session = VideoSessionManager(filename)
             self.session_set_signal.emit(True)
-        except ValueError:
+        except ValueError as e:
+            import warnings
+            warnings.warn(str(e))
             self.session = None
             self.session_set_signal.emit(False)
+        print("Sesssion:", self.session)
 
 
 class CameraDeviceManager(DeviceManager):
@@ -590,10 +643,11 @@ class CameraDeviceManager(DeviceManager):
             self.session_set_signal.emit(True)
             self.can_acquire = True
 
-        except ValueError:
+        except ValueError as e:
             self.session = None
             self.session_set_signal.emit(False)
-
+            import warnings
+            warnings.warn(str(e))
 
 class CameraWidget(QtWidgets.QWidget):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraWidget.new_frame")
@@ -615,9 +669,9 @@ class CameraWidget(QtWidgets.QWidget):
         if camera_device:
             self._camera_device = camera_device
             self._camera_device.new_frame.connect(self._on_new_frame)
-            w, h = self._camera_device.frame_size
-            self.setMinimumSize(w, h)
-            self.setMaximumSize(w, h)
+            # w, h = self._camera_device.frame_size
+            # self.setMinimumSize(w, h)
+            # self.setMaximumSize(w, h)
             self._camera_device.size_changed_signal.connect(self.size_changed)
 
     @QtCore.pyqtSlot()

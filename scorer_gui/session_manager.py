@@ -67,7 +67,7 @@ class SessionManager:
         import shutil
 
         self.log_file = self.get_log_file_name()
-        self.event_columns = ['wall_time', 'trial_time', 'frame', 'type', 'start_stop']
+        self.event_columns = ['wall_time', 'trial_time', 'frame', 'trial_nr', 'type', 'start_stop']
         self.event_columns.extend(self.extra_event_columns)
         if os.path.exists(self.log_file):
             shutil.copyfile(self.log_file, self.log_file + '.bk')
@@ -109,10 +109,11 @@ class SessionManager:
         self.trials.update(df_update)
 
     def set_trial_finished(self):
-        self.cur_trial += 1
         self.trial_ongoing = False
         self.trials.to_csv(self.result_file)
         self.events.to_csv(self.log_file)
+        self.cur_trial += 1
+        self.cur_run += 1
 
     def set_trial_number(self, i):
         self.cur_run = i
@@ -129,7 +130,7 @@ class SessionManager:
         import time
         start_stop = bool(int(msg[-1]))
         msg = msg[:-1]
-        row = [ts, frame_no, msg, start_stop]
+        row = [ts, frame_no, self.cur_trial, start_stop]
         row.extend(extra_data)
         self.events.loc[time.time()] = row
 
