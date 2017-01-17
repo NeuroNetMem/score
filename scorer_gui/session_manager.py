@@ -27,12 +27,17 @@ class SessionManager:
         self.event_columns = None
         self.events = None
 
+        self.comments = ''
+        if not extra_event_columns:
+            extra_event_columns = []
+        self.extra_event_columns = extra_event_columns
+
+        if not extra_trial_columns:
+            extra_trial_columns = []
+        self.extra_trial_columns = extra_trial_columns
+
         self.open_result_file()
         self.open_log_file()
-
-        self.comments = ''
-        self.extra_event_columns = extra_event_columns
-        self.extra_trial_columns = extra_trial_columns
 
     def open_result_file(self):
         import os
@@ -80,11 +85,12 @@ class SessionManager:
 
     def get_scheme_trial_info(self):
         try:
-            s = self.scheme.ix[self.cur_run]
+            s = self.scheme.ix[self.cur_run].copy()
             s['trial_nr'] = self.cur_trial
             s['run_nr'] = self.cur_run
         except KeyError:
             raise ValueError("trial not present")
+        return s
 
     def get_trial_info(self):
         s = self.trials.ix[self.cur_trial]
@@ -92,8 +98,12 @@ class SessionManager:
         return s
 
     def set_trial_info(self, info):
+        import datetime
+        info['start_date'] = str(datetime.datetime.now())[:-4]
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
+        print('finishing setting trial up')
+
         df_update.set_index('trial_nr', inplace=True)
         self.trials.loc[info['trial_nr']] = np.NaN
         self.trials.update(df_update)
@@ -117,7 +127,7 @@ class SessionManager:
 
     def set_event(self, ts, frame_no, msg, *extra_data):
         import time
-        start_stop = bool(int(msg[:-1]))
+        start_stop = bool(int(msg[-1]))
         msg = msg[:-1]
         row = [ts, frame_no, msg, start_stop]
         row.extend(extra_data)

@@ -97,13 +97,17 @@ class DeviceManager(QtCore.QObject):
         self.frame_no = 0
 
         self.trial_ongoing = False
-        self.trial_false = False
+        self.trial_ready = False
+        self.capturing = False
 
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
+        self._timer.start()
         self.moveToThread(self.thread)
+        self.capturing = True
         self.thread.start()
+
 
     def init_device(self):
         return None  # "pure virtual" function
@@ -143,8 +147,10 @@ class DeviceManager(QtCore.QObject):
 
     def trial_setup(self):
         from scorer_gui.obj_scorer import TrialDialog
+        print("starting trial")
         scheme = self.session.get_scheme_trial_info()
-        self.dialog = TrialDialog(caller=self, trial_params=scheme)
+        locations = list(self.rect_coord.keys())
+        self.dialog = TrialDialog(caller=self, trial_params=scheme, locations=locations)
         self.dialog.set_readonly(True)
         while True:
             if self.dialog.exec_():
@@ -152,7 +158,7 @@ class DeviceManager(QtCore.QObject):
                 break
             else:
                 continue
-
+        self.dialog = None
         self.video_out_filename = self.session.get_video_file_name_for_trial()
         self.open_files()
 
@@ -162,19 +168,19 @@ class DeviceManager(QtCore.QObject):
 
         trial_info = self.session.get_trial_info()
         font = cv2.FONT_HERSHEY_DUPLEX
-        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['trial_no'])
+        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['trial_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width-t_size[0])//2, 15
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
-        str1 = trial_info(trial_info['start_date'])
+        str1 = trial_info['start_date']
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
         str1 = "Subject " + str(trial_info['rat'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
-        tpt = (width - t_size[0]) // 2, 15
+        tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
     def add_trial(self):
@@ -201,8 +207,8 @@ class DeviceManager(QtCore.QObject):
                 self.is_acquiring_signal.emit(True)
             else:
                 self.acquiring = True
-                if not self._timer.isActive():
-                    self._timer.start()
+                if not self.capturing:
+                    self.capturing = True
 
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
@@ -385,7 +391,7 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
 
-        if not self.trial_ready:
+        if self.session and not self.trial_ready:
             return
         if msg == 'TR0':
             return
@@ -395,6 +401,8 @@ class DeviceManager(QtCore.QObject):
             msg = 'TR' + str(trial_on)
             if trial_on:
                 self.trial_ongoing = True
+                if self.session:
+                    self.start_time = datetime.datetime.now()
             else:
                 self.trial_ongoing = False
         else:
@@ -405,7 +413,7 @@ class DeviceManager(QtCore.QObject):
             else:
                 self.obj_state[msg[:-1]] = 0
 
-        if self.acquiring and self._timer.isActive():
+        if self.acquiring and self.capturing:
             t = self.get_cur_time()
             ts = t.seconds + 1.e-6 * t.microseconds
             if self.session:
@@ -446,6 +454,8 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
+        if not self.capturing:
+            return
         if not self.paused and self.acquiring:
             ret, frame = self._device.read()
             if ret:
@@ -498,7 +508,6 @@ class CameraDeviceManager(DeviceManager):
     def __init__(self, camera_id=0, parent=None, session_file=None):
         self.camera_id = camera_id
         super(CameraDeviceManager, self).__init__(parent=parent, session_file=session_file)
-        self._timer.start()
         self.init_thread()
         self.paused = False
 
@@ -511,12 +520,16 @@ class CameraDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
+        if self.to_release:
+            self.release()
+        if not self.capturing:
+            return
         if not self.paused:
             if self.splash_screen_countdown:
                 frame = self.splash_screen
                 ret = True
                 if self.splash_screen_countdown == 1:
-                    self.session.set_trial_ready()
+                    self.trial_ready = True
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()
@@ -530,8 +543,8 @@ class CameraDeviceManager(DeviceManager):
                 self.frame_no += 1
                 if self.save_raw_video and self.raw_out and self.acquiring:
                     self.raw_out.write(frame)
-            if self.splash_screen_countdown == 0:
-                self.process_frame(frame)
+                if self.splash_screen_countdown == 0:
+                    self.process_frame(frame)
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
@@ -540,8 +553,7 @@ class CameraDeviceManager(DeviceManager):
                 #  notify that camera is not acquiring ?
                 # self.video_finished_signal.emit()
                 # self.paused = True
-        if self.to_release:
-            self.release()
+
 
     @property
     def frame_size(self):
@@ -558,14 +570,25 @@ class CameraDeviceManager(DeviceManager):
 
     def get_cur_time(self):
         if self.session:
-            return self.session.get_cur_time()
+            if not self.trial_ongoing:
+                return datetime.timedelta(0)
+            else:
+                return datetime.datetime.now() - self.start_time
         else:
             return datetime.datetime.now() - self.start_time
 
     def set_session(self, filename):
         try:
-            self.session = LiveSessionManager(filename)
+            # noinspection PyUnresolvedReferences,PyCallByClass,PyTypeChecker
+            init_trial, ok = QtWidgets.QInputDialog.getInt(None,
+                                                           "Initial trial",
+                                                           "Please enter the first scheme trial for this session",
+                                                           1, min=1, flags=QtCore.Qt.WindowFlags())
+            if not ok:
+                init_trial = 1
+            self.session = LiveSessionManager(filename, initial_trial=init_trial)
             self.session_set_signal.emit(True)
+            self.can_acquire = True
 
         except ValueError:
             self.session = None

@@ -16,7 +16,7 @@ class TrialDialog(QtWidgets.QDialog):
         super(TrialDialog, self).__init__(flags=flags_)
         self.ui = Ui_TrialDialog()
         self.ui.setupUi(self)
-        self.ui.objectComboBox.currentIndexChanged.connect(self.update_object_image)
+        self.ui.objectComboBox.currentIndexChanged.connect(self.update_object_change)
         if caller:
             self.ui.addTrialButton.clicked.connect(caller.add_trial)
             self.ui.skipTrialButton.clicked.connect(caller.skip_trial)
@@ -24,13 +24,24 @@ class TrialDialog(QtWidgets.QDialog):
             self.ui.location1ComboBox.addItems(locations)
             self.ui.location2ComboBox.addItems(locations)
             self.locations = locations
+        else:
+            raise ValueError("missing argument locations")
         # object codes are derived by the filenames of the images in the resource file
         d = QtCore.QDir(':/obj_images')
         l = d.entryList()
-        self.obj_idxs = [int(s[:-4]) for s in l].sort()
-        self.ui.objectComboBox.addItems(self.obj_idxs)
+        self.obj_idxs = [int(s[:-4]) for s in l]
+        self.obj_idxs.sort()
+        str_obj_idxs = [str(i) for i in self.obj_idxs]
+        self.ui.objectComboBox.addItems(str_obj_idxs)
 
         self.set_values(trial_params)
+        self.set_image()
+
+    def set_image(self):
+        obj_idx = self.get_current_object()
+        pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
+        pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
+        self.ui.objectLabel.setPixmap(pixmap)
 
     def set_readonly(self, ro):
         self.ui.sessionLineEdit.setReadOnly(ro)
@@ -44,13 +55,11 @@ class TrialDialog(QtWidgets.QDialog):
     # noinspection PyUnusedLocal
     @QtCore.pyqtSlot(int)
     def update_object_change(self, i):
+        self.set_image()
         self.update()
 
-    def paintEvent(self, e):
-        p = QtGui.QPainter(self.ui.objectFrame)
-        obj_idx = self.obj_idxs[self.ui.objectComboBox.currentIndex()]
-        image = QtGui.QImage(":/obj_images/" + str(obj_idx) + '.JPG')  # TODO scale image
-        p.drawImage(QtCore.QPoint(0, 0), image)
+    def get_current_object(self):
+        return self.obj_idxs[self.ui.objectComboBox.currentIndex()]
 
     def set_values(self, values):
         self.ui.sessionLineEdit.setText(str(values['session']))
@@ -108,6 +117,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rotateComboBox.setEnabled(True)
             self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
             self.device.can_acquire_signal.connect(self.change_acquisition_state)
+            self.change_acquisition_state(dev.can_acquire)
             self.device.is_acquiring_signal.connect(self.acquisition_started_stopped)
             self.device.is_paused_signal.connect(self.has_paused)
             self.ui.playButton.clicked.connect(self.device.start_acquisition)
