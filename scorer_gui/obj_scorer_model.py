@@ -49,6 +49,8 @@ class TrialDialogController(QtCore.QObject):
 
     def set_scheme(self, scheme):
         self.scheme = scheme
+        if self.dialog:
+            self.dialog.set_values(scheme)
 
     def get_values(self):
         return self.dialog.get_values()
@@ -203,7 +205,7 @@ class DeviceManager(QtCore.QObject):
             # noinspection PyUnresolvedReferences
             self.dialog.dialog_done_signal.connect(loop.quit)
             loop.exec_()
-            if self.dialog.exit_status:
+            if self.dialog.exit_status():
                 self.session.set_trial_info(self.dialog.get_values())
                 break
             else:

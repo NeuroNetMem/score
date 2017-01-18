@@ -130,7 +130,7 @@ class SessionManager:
         import time
         start_stop = bool(int(msg[-1]))
         msg = msg[:-1]
-        row = [ts, frame_no, self.cur_trial, start_stop]
+        row = [ts, frame_no, self.cur_trial, msg, start_stop]
         row.extend(extra_data)
         self.events.loc[time.time()] = row
 
