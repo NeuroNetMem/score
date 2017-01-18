@@ -66,14 +66,14 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.sessionLineEdit.setText(str(values['session']))
         self.ui.runLineEdit.setText(str(values['run_nr']))
         self.ui.trialLineEdit.setText(str(values['trial_nr']))
-        self.ui.subjectLineEdit.setText(str(values['rat']))
+        self.ui.subjectLineEdit.setText(str(values['subject']))
         self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
         self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
         self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
 
     def get_values(self):
         values = {'session': int(self.ui.sessionLineEdit.text()), 'run_nr': int(self.ui.runLineEdit.text()),
-                  'trial_nr': int(self.ui.trialLineEdit.text()), 'rat': int(self.ui.subjectLineEdit.text()),
+                  'trial_nr': int(self.ui.trialLineEdit.text()), 'subject': int(self.ui.subjectLineEdit.text()),
                   'loc_1': self.locations[self.ui.location1ComboBox.currentIndex()],
                   'loc_2': self.locations[self.ui.location2ComboBox.currentIndex()],
                   'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()]}

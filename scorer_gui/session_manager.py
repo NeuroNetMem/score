@@ -4,7 +4,7 @@ from pandas.core.common import PandasError
 
 
 class SessionManager:
-    required_columns = ('condition', 'goal', 'group', 'session', 'rat', 'trial', 'originalnr')
+    required_columns = ('condition',  'group', 'session', 'subject', 'trial', )
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None):
         self.scheme_file = filename
@@ -45,7 +45,7 @@ class SessionManager:
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'trial_nr', 'comments'))
+        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'trial_nr', 'comments', 'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
             shutil.copyfile(self.result_file, self.result_file + '.bk')

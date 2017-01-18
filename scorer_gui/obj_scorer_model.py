@@ -229,7 +229,7 @@ class DeviceManager(QtCore.QObject):
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
-        str1 = "Subject " + str(trial_info['rat'])
+        str1 = "Subject " + str(trial_info['subject'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
@@ -431,10 +431,10 @@ class DeviceManager(QtCore.QObject):
                 QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_L: 'LR',
                 QtCore.Qt.Key_T: 'TR'}
 
-    rect_coord = {'UL': (lambda w, h: ((3, 3), (int(w*0.3), int(h*0.3)))),
-                  'UR': (lambda w, h: ((w-3, 3), (int(w*0.7), int(h*0.3)))),
-                  'LL': (lambda w, h: ((3, h-3), (int(w*0.3), int(h*0.7)))),
-                  'LR': (lambda w, h: ((w-3, h-3), (int(w*0.7), int(h*0.7))))}
+    rect_coord = {'UL': (lambda w, h: ((8, 8), (int(w*0.3), int(h*0.3)))),
+                  'UR': (lambda w, h: ((w-8, 8), (int(w*0.7), int(h*0.3)))),
+                  'LL': (lambda w, h: ((8, h-8), (int(w*0.3), int(h*0.7)))),
+                  'LR': (lambda w, h: ((w-8, h-8), (int(w*0.7), int(h*0.7))))}
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
@@ -479,7 +479,7 @@ class DeviceManager(QtCore.QObject):
                 pt1, pt2 = self.rect_coord[place](w, h)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         if self.obj_state['TR']:
-            cv2.rectangle(frame, (0, 0), (w, h), (0, 255, 0), 2)
+            cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
         self.add_timestamp_string(frame)
 
 
@@ -556,7 +556,7 @@ class VideoDeviceManager(DeviceManager):
 
 
 class CameraDeviceManager(DeviceManager):
-    _DEFAULT_FPS = 15
+    _DEFAULT_FPS = 30
 
     def __init__(self, camera_id=0, parent=None, session_file=None):
         self.camera_id = camera_id
