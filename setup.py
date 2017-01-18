@@ -7,7 +7,7 @@ except ImportError:
 setup(description='Behavioral scorer',
       author='Francesco Battaglia',
       author_email='fpbattaglia@gmail.com',
-      version='0.1',
+      version='0.2',
       license='GPL',
       packages=['scorer_gui'],
       package_data={'resources': ['scorer_gui/resources/*.*']},
