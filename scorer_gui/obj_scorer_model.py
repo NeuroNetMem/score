@@ -19,6 +19,7 @@ def find_how_many_cameras():
         if not v.isOpened():
             return i
         v.release()
+    return 1
 
 
 class OpenCVQImage(QtGui.QImage):
@@ -103,6 +104,7 @@ class DeviceManager(QtCore.QObject):
         self._acquiring = False
         self._paused = False
         self._timer = None
+        self.interval = 0
         self.session = None
         if session_file:
             self.set_session(session_file)
@@ -124,14 +126,13 @@ class DeviceManager(QtCore.QObject):
         self.to_release = False
 
         self._device = None
-        # self._device = self.init_device()
-        # prepare timer
-        self.interval = int(1.e3 / self.fps)
+        self._device = self.init_device()
         self.start_time = datetime.datetime.now()
         self.frame_no = 0
 
         self.trial_ongoing = False
         self.trial_ready = False
+        self.trial_completed = False
         self.capturing = False
         # noinspection PyArgumentList
         # print("init_thread: ", int(QtCore.QThread.currentThreadId()))
@@ -151,11 +152,12 @@ class DeviceManager(QtCore.QObject):
         # noinspection PyArgumentList
         # print("running in thread: ", QtCore.QThread.currentThread(), " id: ", int(QtCore.QThread.currentThreadId()))
         # noinspection PyCallByClass
+        # self._device = self.init_device()
         self._timer = QtCore.QTimer()
+        self.interval = int(1.e3 / self.fps)
         self._timer.setInterval(self.interval)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
-        self._device = self.init_device()
         self._timer.start()
         self.size_changed_signal.emit()
 
@@ -219,7 +221,7 @@ class DeviceManager(QtCore.QObject):
 
         trial_info = self.session.get_trial_info()
         font = cv2.FONT_HERSHEY_DUPLEX
-        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['trial_nr'])
+        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width-t_size[0])//2, 15
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
@@ -402,6 +404,10 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot()
     def set_paused(self):
         if self.session:
+            if not self.trial_completed:
+                t = self.get_cur_time()
+                ts = t.seconds + 1.e-6 * t.microseconds
+                self.session.set_event(ts, self.frame_no, 'TR0')
             self.close_files()
             self.session.set_trial_finished()
 
@@ -446,7 +452,7 @@ class DeviceManager(QtCore.QObject):
             return
         if msg == 'TR0':
             return
-        if msg == 'TR1':
+        if msg == 'TR1' and not self.trial_completed:
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
             msg = 'TR' + str(trial_on)
@@ -456,6 +462,7 @@ class DeviceManager(QtCore.QObject):
                     self.start_time = datetime.datetime.now()
             else:
                 self.trial_ongoing = False
+                self.trial_completed = True
         else:
             if self.session and not self.trial_ongoing:
                 return
@@ -497,7 +504,6 @@ class VideoDeviceManager(DeviceManager):
         cd = cv2.VideoCapture(self.video_file)
         if not cd.isOpened():
             raise RuntimeError("Could not open video file {}".format(self.video_file))
-        self.query_frame()
         return cd
 
     def video_last_frame(self):
@@ -565,8 +571,10 @@ class CameraDeviceManager(DeviceManager):
         self.paused = False
 
     def init_device(self):
+        # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
-        cd = cv2.VideoCapture(self.camera_id)
+        cd = cv2.VideoCapture(0)
+        # cd = cv2.VideoCapture(self.camera_id)
         if not cd.isOpened():
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
         return cd
@@ -583,6 +591,7 @@ class CameraDeviceManager(DeviceManager):
                 ret = True
                 if self.splash_screen_countdown == 1:
                     self.trial_ready = True
+                    self.trial_completed = False
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()

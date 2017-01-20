@@ -3,7 +3,8 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
-from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager, find_how_many_cameras
+from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
+# , find_how_many_cameras
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
 # noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
@@ -65,7 +66,7 @@ class TrialDialog(QtWidgets.QDialog):
     def set_values(self, values):
         self.ui.sessionLineEdit.setText(str(values['session']))
         self.ui.runLineEdit.setText(str(values['run_nr']))
-        self.ui.trialLineEdit.setText(str(values['trial_nr']))
+        self.ui.trialLineEdit.setText(str(values['sequence_nr']))
         self.ui.subjectLineEdit.setText(str(values['subject']))
         self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
         self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
@@ -73,7 +74,7 @@ class TrialDialog(QtWidgets.QDialog):
 
     def get_values(self):
         values = {'session': int(self.ui.sessionLineEdit.text()), 'run_nr': int(self.ui.runLineEdit.text()),
-                  'trial_nr': int(self.ui.trialLineEdit.text()), 'subject': int(self.ui.subjectLineEdit.text()),
+                  'sequence_nr': int(self.ui.trialLineEdit.text()), 'subject': int(self.ui.subjectLineEdit.text()),
                   'loc_1': self.locations[self.ui.location1ComboBox.currentIndex()],
                   'loc_2': self.locations[self.ui.location2ComboBox.currentIndex()],
                   'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()]}
@@ -195,13 +196,27 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def get_camera_id_to_open(self):
-        n_cameras = find_how_many_cameras()
+        # n_cameras = find_how_many_cameras()
+        n_cameras = 5
+        print("n_cameras = ", n_cameras)
         ops = [str(i) for i in range(n_cameras)]
-        # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
-        dialog_out = QtWidgets.QInputDialog.getItem(self, "Open Camera", "Which camera id do you want to open?", ops)
-        if not dialog_out[1]:
-            return
-        self.set_camera(int(dialog_out[0]))
+        print("ops: ", ops)
+        import time
+        time.sleep(1)
+
+        if len(ops) == 1:
+            cam = ops[0]
+        else:
+            print("before dialog")
+            # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
+            dialog_out = QtWidgets.QInputDialog.getItem(self, "Open Camera", "Which camera id do you want to open?",
+                                                        ops)
+            print("after dialog")
+            if not dialog_out[1]:
+                return
+            cam = int(dialog_out[0])
+
+        self.set_camera(cam)
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
@@ -249,6 +264,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rawVideoCheckBox.setEnabled(False)
 
     def set_camera(self, camera_id):
+        print("in set camera")
         if self.device:
             self.device.cleanup()
         self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
@@ -268,7 +284,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         import os
         if self.device:
             self.device.cleanup()
-        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session)
+        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file)
         self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
         last_frame = self.device.video_last_frame()
         self.ui.videoInSlider.setEnabled(True)

@@ -45,15 +45,15 @@ class SessionManager:
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'trial_nr', 'comments', 'originalnr', 'goal'))
+        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
             shutil.copyfile(self.result_file, self.result_file + '.bk')
-            self.trials = pd.DataFrame.from_csv(self.result_file, index_col='trial_nr')
+            self.trials = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
             self.cur_trial = self.trials.index.max() + 1
         else:
             self.trials = pd.DataFrame(columns=self.result_columns)
-            self.trials.set_index('trial_nr', inplace=True)
+            self.trials.set_index('sequence_nr', inplace=True)
 
     def get_result_file_name(self):
         import os
@@ -67,7 +67,7 @@ class SessionManager:
         import shutil
 
         self.log_file = self.get_log_file_name()
-        self.event_columns = ['wall_time', 'trial_time', 'frame', 'trial_nr', 'type', 'start_stop']
+        self.event_columns = ['wall_time', 'trial_time', 'frame', 'sequence_nr', 'type', 'start_stop']
         self.event_columns.extend(self.extra_event_columns)
         if os.path.exists(self.log_file):
             shutil.copyfile(self.log_file, self.log_file + '.bk')
@@ -86,7 +86,7 @@ class SessionManager:
     def get_scheme_trial_info(self):
         try:
             s = self.scheme.ix[self.cur_run].copy()
-            s['trial_nr'] = self.cur_trial
+            s['sequence_nr'] = self.cur_trial
             s['run_nr'] = self.cur_run
         except KeyError:
             raise ValueError("trial not present")
@@ -94,7 +94,7 @@ class SessionManager:
 
     def get_trial_info(self):
         s = self.trials.ix[self.cur_trial]
-        s['trial_nr'] = self.cur_trial
+        s['sequence_nr'] = self.cur_trial
         return s
 
     def set_trial_info(self, info):
@@ -104,8 +104,8 @@ class SessionManager:
         df_update = df_update.transpose()
         print('finishing setting trial up')
 
-        df_update.set_index('trial_nr', inplace=True)
-        self.trials.loc[info['trial_nr']] = np.NaN
+        df_update.set_index('sequence_nr', inplace=True)
+        self.trials.loc[info['sequence_nr']] = np.NaN
         self.trials.update(df_update)
 
     def set_trial_finished(self):
