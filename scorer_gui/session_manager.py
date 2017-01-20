@@ -150,3 +150,4 @@ class VideoSessionManager(SessionManager):
 
 class LiveSessionManager(SessionManager):
     pass
+
