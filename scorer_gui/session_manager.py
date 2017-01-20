@@ -45,7 +45,8 @@ class SessionManager:
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
+        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'sequence_nr', 'comments',
+                                    'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
             shutil.copyfile(self.result_file, self.result_file + '.bk')
@@ -93,7 +94,7 @@ class SessionManager:
         return s
 
     def get_trial_info(self):
-        s = self.trials.ix[self.cur_trial]
+        s = self.trials.ix[self.cur_trial].copy()
         s['sequence_nr'] = self.cur_trial
         return s
 
@@ -104,12 +105,21 @@ class SessionManager:
         df_update = df_update.transpose()
         print('finishing setting trial up')
 
+        assert info['sequence_nr'] == self.cur_trial
+
         df_update.set_index('sequence_nr', inplace=True)
         self.trials.loc[info['sequence_nr']] = np.NaN
         self.trials.update(df_update)
 
+        # complete the results dataframe with info from the scheme dataframe
+        r = self.trials.loc[info['sequence_nr']].copy()
+        r.update(self.scheme.loc[self.cur_run])
+        self.trials.loc[info['sequence_nr']] = r
+
     def set_trial_finished(self):
         self.trial_ongoing = False
+        if self.comments:
+            self.trials.loc[self.cur_trial]['comments'] = self.comments
         self.trials.to_csv(self.result_file)
         self.events.to_csv(self.log_file)
         self.cur_trial += 1
@@ -117,6 +127,9 @@ class SessionManager:
 
     def set_trial_number(self, i):
         self.cur_run = i
+
+    def set_comments(self, comments):
+        self.comments = comments
 
     def get_video_file_name_for_trial(self):
         import os

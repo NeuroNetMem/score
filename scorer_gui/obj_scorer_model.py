@@ -80,6 +80,9 @@ class DeviceManager(QtCore.QObject):
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
     session_set_signal = QtCore.pyqtSignal(bool, name="CameraDevice.session_set")
     dialog_trigger_signal = QtCore.pyqtSignal(name="CameraDevice.dialog_trigger_signal")
+    video_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_file_changed_signal')
+    trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
+    error_signal = QtCore.pyqtSignal(name='CameraDevice.error_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -220,6 +223,7 @@ class DeviceManager(QtCore.QObject):
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
         trial_info = self.session.get_trial_info()
+        self.session.set_comments('')
         font = cv2.FONT_HERSHEY_DUPLEX
         str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
@@ -235,6 +239,8 @@ class DeviceManager(QtCore.QObject):
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
+
+        self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
 
     def add_trial(self):
         if self.session:
@@ -294,9 +300,22 @@ class DeviceManager(QtCore.QObject):
         if not self.session:
             self.open_csv_files()
 
+    @QtCore.pyqtSlot(str)
+    def set_comments(self, comments):
+        print('comments: ' + comments)
+        if self.session:
+            self.session.set_comments(comments)
+
     def open_files(self):
+        import os
         filename = self.video_out_filename
         print("opening output file: ", filename, "...")
+        if os.path.exists(filename):
+            error = QtWidgets.QErrorMessage()
+            error.showMessage("File " + filename + " exists, cannot proceed")
+            error.exec_()
+            self.error_signal.emit()
+
         import platform
         codec_string = ''
         if platform.system() == 'Darwin':
@@ -322,6 +341,7 @@ class DeviceManager(QtCore.QObject):
         else:
             import warnings
             warnings.warn("Can't open output file!!")
+        self.video_file_changed_signal.emit("Video: " + os.path.basename(filename))
 
     def close_files(self):
         if self.out:
@@ -383,6 +403,7 @@ class DeviceManager(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def cleanup(self):
+
         self.can_acquire = False
         self.to_release = True
         if self.thread:
@@ -401,16 +422,20 @@ class DeviceManager(QtCore.QObject):
         if self.thread:
             self.thread.quit()
 
-    @QtCore.pyqtSlot()
-    def set_paused(self):
-        if self.session:
+    def finalize_trial(self):
+        if self.trial_ready:
             if not self.trial_completed:
                 t = self.get_cur_time()
                 ts = t.seconds + 1.e-6 * t.microseconds
                 self.session.set_event(ts, self.frame_no, 'TR0')
             self.close_files()
             self.session.set_trial_finished()
+            self.trial_ready = False
 
+    @QtCore.pyqtSlot()
+    def set_paused(self):
+        if self.session:
+            self.finalize_trial()
         self.paused = True
 
     @property

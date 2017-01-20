@@ -1,13 +1,11 @@
-from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
+from PyQt5 import QtWidgets
 
-from scorer_gui.obj_scorer_ui import Ui_MainWindow
-from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
-# , find_how_many_cameras
-from scorer_gui.trial_dialog_ui import Ui_TrialDialog
-# noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
+from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
+from scorer_gui.obj_scorer_ui import Ui_MainWindow
+from scorer_gui.trial_dialog_ui import Ui_TrialDialog
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -37,6 +35,7 @@ class TrialDialog(QtWidgets.QDialog):
 
         self.set_values(trial_params)
         self.set_image()
+        self.setWindowTitle("Next Trial")
 
     def set_image(self):
         obj_idx = self.get_current_object()
@@ -84,6 +83,7 @@ class TrialDialog(QtWidgets.QDialog):
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
     key_action = QtCore.pyqtSignal(str, name="ScorerMainWindow.key_action")
+    comments_received = QtCore.pyqtSignal(str, name='ScorerMainWindow.comments_received')
 
     def __init__(self):
         # noinspection PyUnresolvedReferences
@@ -103,6 +103,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.actionSave_to.setEnabled(False)
         self.ui.rawVideoCheckBox.setEnabled(False)
         self.ui.displayTsCheckBox.setChecked(True)
+        self.setWindowTitle("Object in place task")
+        self.comments_dialog = None
 
     @property
     def device(self):
@@ -131,6 +133,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
             self.device.size_changed_signal.connect(self.video_size_changed)
             self.device.session_set_signal.connect(self.session_was_set)
+            self.device.video_file_changed_signal.connect(self.ui.destLabel.setText)
+            self.device.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
+            self.ui.commentsButton.clicked.connect(self.get_comments)
+            # noinspection PyUnresolvedReferences
+            self.comments_received.connect(self.device.set_comments)
+            self.device.error_signal.connect(self.close_all)
         self.ui.cameraWidget.set_device(self.device)
 
     @QtCore.pyqtSlot(bool)
@@ -309,6 +317,23 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
                 msg = DeviceManager.dir_keys[event.key()] + '0'
                 self.key_action.emit(msg)
         event.accept()
+
+    @QtCore.pyqtSlot()
+    def get_comments(self):
+        # noinspection PyArgumentList
+        dialog = QtWidgets.QInputDialog(None)
+        dialog.setInputMode(QtWidgets.QInputDialog.TextInput)
+        dialog.setLabelText("Comments:")
+        dialog.setWindowTitle("Insert Comments")
+        dialog.setOption(QtWidgets.QInputDialog.UsePlainTextEditForTextInput)
+        dialog.accepted.connect(self.process_comments)
+        self.comments_dialog = dialog
+        dialog.show()
+
+    def process_comments(self):
+        text = self.comments_dialog.textValue()
+        print("window comments: " + text)
+        self.comments_received.emit(text)
 
 
 def _main():
