@@ -15,5 +15,5 @@ setup(description='Behavioral scorer',
       name='scorer_gui',
       entry_points="""
         [console_scripts]
-        scorer=scorer_gui.obj_scorer:_main
+        scorer32=scorer_gui.obj_scorer:_main
       """, install_requires=['pandas'])
