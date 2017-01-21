@@ -82,7 +82,7 @@ class DeviceManager(QtCore.QObject):
     dialog_trigger_signal = QtCore.pyqtSignal(name="CameraDevice.dialog_trigger_signal")
     video_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_file_changed_signal')
     trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
-    error_signal = QtCore.pyqtSignal(name='CameraDevice.error_signal')
+    error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -302,7 +302,6 @@ class DeviceManager(QtCore.QObject):
 
     @QtCore.pyqtSlot(str)
     def set_comments(self, comments):
-        print('comments: ' + comments)
         if self.session:
             self.session.set_comments(comments)
 
@@ -311,10 +310,7 @@ class DeviceManager(QtCore.QObject):
         filename = self.video_out_filename
         print("opening output file: ", filename, "...")
         if os.path.exists(filename):
-            error = QtWidgets.QErrorMessage()
-            error.showMessage("File " + filename + " exists, cannot proceed")
-            error.exec_()
-            self.error_signal.emit()
+            self.error_signal.emit("File " + filename + " exists, cannot proceed")
 
         import platform
         codec_string = ''
@@ -428,9 +424,55 @@ class DeviceManager(QtCore.QObject):
                 t = self.get_cur_time()
                 ts = t.seconds + 1.e-6 * t.microseconds
                 self.session.set_event(ts, self.frame_no, 'TR0')
+                self.trial_ongoing = False
+                self.trial_completed = True
+                self.obj_state['TR'] = False
             self.close_files()
+            self.analyze_trial()
             self.session.set_trial_finished()
             self.trial_ready = False
+
+    def analyze_trial(self):
+        # noinspection PyUnresolvedReferences
+        import neuroseries as nts
+        lt = self.session.get_events_for_trial()
+        info = self.session.get_scheme_trial_info()
+        loc_1 = info['loc_1']
+        loc_2 = info['loc_2']
+        goal = info['goal']
+        other = None
+        if goal:
+            if goal == loc_1:
+                other = loc_2
+            else:
+                other = loc_1
+
+        st = lt.iloc[0]['trial_time']
+        en = st + 300
+        trial_5_min = nts.IntervalSet(st, en, time_units='s')
+        locations = list(self.rect_coord.keys())
+        explore_time = {}
+        explore_time_5 = {}
+        for l in locations:
+            st = lt.loc[(lt['type'] == l) & (lt['start_stop'])]['trial_time']
+            en = lt.loc[(lt['type'] == l) & (~(lt['start_stop'] == True))]['trial_time']
+            explore = nts.IntervalSet(st, en, time_units='s')
+            explore_time[l] = explore.tot_length(time_units='s')
+            explore_5 = trial_5_min.intersect(explore)
+            explore_time_5[l] = explore_5.tot_length(time_units='s')
+        if goal is not np.nan:
+            extra_info = {'goal_time': explore_time[goal],
+                          'other_time': explore_time[other],
+                          'goal_time_5': explore_time_5[goal],
+                          'other_time_5': explore_time_5[other]
+                          }
+        else:
+            extra_info = {'loc_1_time': explore_time[loc_1],
+                          'loc_2_time': explore_time[loc_2],
+                          'loc_1_time_5': explore_time_5[loc_1],
+                          'loc_2_time_5': explore_time_5[loc_2]}
+
+        self.session.update_results_with_extra_data(extra_info)
 
     @QtCore.pyqtSlot()
     def set_paused(self):
@@ -458,8 +500,10 @@ class DeviceManager(QtCore.QObject):
     # the following definitions are the business logic of the experiment,
     # they may be overridden for a different experiment
 
-    dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_O: 'UR',
-                QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_L: 'LR',
+    dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_7: 'UL',
+                QtCore.Qt.Key_O: 'UR', QtCore.Qt.Key_9: 'UR',
+                QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_1: 'LL',
+                QtCore.Qt.Key_L: 'LR', QtCore.Qt.Key_3: 'LR',
                 QtCore.Qt.Key_T: 'TR'}
 
     rect_coord = {'UL': (lambda w, h: ((8, 8), (int(w*0.3), int(h*0.3)))),
@@ -475,6 +519,7 @@ class DeviceManager(QtCore.QObject):
 
         if self.session and not self.trial_ready:
             return
+        t = self.get_cur_time()
         if msg == 'TR0':
             return
         if msg == 'TR1' and not self.trial_completed:
@@ -497,7 +542,7 @@ class DeviceManager(QtCore.QObject):
                 self.obj_state[msg[:-1]] = 0
 
         if self.acquiring and self.capturing:
-            t = self.get_cur_time()
+
             ts = t.seconds + 1.e-6 * t.microseconds
             if self.session:
                 self.session.set_event(ts, self.frame_no, msg)

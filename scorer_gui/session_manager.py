@@ -4,7 +4,7 @@ from pandas.core.common import PandasError
 
 
 class SessionManager:
-    required_columns = ('condition',  'group', 'session', 'subject', 'trial', )
+    required_columns = ('condition', 'group', 'session', 'subject', 'trial',)
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None):
         self.scheme_file = filename
@@ -45,8 +45,9 @@ class SessionManager:
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time', 'total', 'sequence_nr', 'comments',
-                                    'originalnr', 'goal'))
+        self.result_columns.extend(('start_date', 'goal_time', 'other_time', 'loc_1_time', 'loc_2_time',
+                                    'goal_time_5', 'other_time_5', 'loc_1_time_5', 'loc_2_time_5',
+                                    'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
             shutil.copyfile(self.result_file, self.result_file + '.bk')
@@ -103,7 +104,6 @@ class SessionManager:
         info['start_date'] = str(datetime.datetime.now())[:-4]
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
-        print('finishing setting trial up')
 
         assert info['sequence_nr'] == self.cur_trial
 
@@ -146,6 +146,30 @@ class SessionManager:
         row = [ts, frame_no, self.cur_trial, msg, start_stop]
         row.extend(extra_data)
         self.events.loc[time.time()] = row
+
+    def get_events_for_trial(self, i=None):
+        if i is None:
+            i = self.cur_trial
+        lt = self.events.loc[self.events['sequence_nr'] == float(i)]
+        assert lt.iloc[0]['type'] == 'TR' and \
+            lt.iloc[-1]['type'] == 'TR' and \
+            lt.iloc[1:-1]['type'].all() != 'TR' and \
+            lt.iloc[0]['start_stop'] and \
+            not lt.iloc[-1]['start_stop']
+        return lt
+
+    def get_scheme_trial(self, i=None):
+        if i is None:
+            i = self.cur_run
+        return self.scheme.loc[i]
+
+    def update_results_with_extra_data(self, info):
+        info['sequence_nr'] = self.cur_trial
+        df_update = pd.DataFrame.from_dict(info, orient='index')
+        df_update = df_update.transpose()
+        df_update.set_index('sequence_nr', inplace=True)
+        # self.trials.loc[info['sequence_nr']] = np.NaN
+        self.trials.update(df_update)
 
     def add_trial(self):
         self.cur_trial += 1

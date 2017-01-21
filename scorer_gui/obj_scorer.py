@@ -2,6 +2,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
+# noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
 from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
@@ -138,7 +139,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.commentsButton.clicked.connect(self.get_comments)
             # noinspection PyUnresolvedReferences
             self.comments_received.connect(self.device.set_comments)
-            self.device.error_signal.connect(self.close_all)
+            self.device.error_signal.connect(self.error_and_close)
         self.ui.cameraWidget.set_device(self.device)
 
     @QtCore.pyqtSlot(bool)
@@ -194,6 +195,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(True)
             self.ui.stopButton.setEnabled(True)
+
+    @QtCore.pyqtSlot(str)
+    def error_and_close(self, e):
+        error = QtWidgets.QErrorMessage()
+        error.showMessage(e)
+        error.exec_()
+        self.close_all()
 
     @QtCore.pyqtSlot()
     def close_all(self):
@@ -326,6 +334,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         dialog.setLabelText("Comments:")
         dialog.setWindowTitle("Insert Comments")
         dialog.setOption(QtWidgets.QInputDialog.UsePlainTextEditForTextInput)
+        # noinspection PyUnresolvedReferences
         dialog.accepted.connect(self.process_comments)
         self.comments_dialog = dialog
         dialog.show()
