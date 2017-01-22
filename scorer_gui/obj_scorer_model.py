@@ -439,13 +439,6 @@ class DeviceManager(QtCore.QObject):
         info = self.session.get_scheme_trial_info()
         loc_1 = info['loc_1']
         loc_2 = info['loc_2']
-        goal = info['goal']
-        other = None
-        if goal:
-            if goal == loc_1:
-                other = loc_2
-            else:
-                other = loc_1
 
         st = lt.iloc[0]['trial_time']
         en = st + 300
@@ -460,17 +453,11 @@ class DeviceManager(QtCore.QObject):
             explore_time[l] = explore.tot_length(time_units='s')
             explore_5 = trial_5_min.intersect(explore)
             explore_time_5[l] = explore_5.tot_length(time_units='s')
-        if goal is not np.nan:
-            extra_info = {'goal_time': explore_time[goal],
-                          'other_time': explore_time[other],
-                          'goal_time_5': explore_time_5[goal],
-                          'other_time_5': explore_time_5[other]
-                          }
-        else:
-            extra_info = {'loc_1_time': explore_time[loc_1],
-                          'loc_2_time': explore_time[loc_2],
-                          'loc_1_time_5': explore_time_5[loc_1],
-                          'loc_2_time_5': explore_time_5[loc_2]}
+
+        extra_info = {'loc_1_time': explore_time[loc_1],
+                      'loc_2_time': explore_time[loc_2],
+                      'loc_1_time_5': explore_time_5[loc_1],
+                      'loc_2_time_5': explore_time_5[loc_2]}
 
         self.session.update_results_with_extra_data(extra_info)
 

@@ -45,8 +45,8 @@ class SessionManager:
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        self.result_columns.extend(('start_date', 'goal_time', 'other_time', 'loc_1_time', 'loc_2_time',
-                                    'goal_time_5', 'other_time_5', 'loc_1_time_5', 'loc_2_time_5',
+        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time',
+                                    'loc_1_time_5', 'loc_2_time_5',
                                     'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
@@ -151,11 +151,12 @@ class SessionManager:
         if i is None:
             i = self.cur_trial
         lt = self.events.loc[self.events['sequence_nr'] == float(i)]
-        assert lt.iloc[0]['type'] == 'TR' and \
-            lt.iloc[-1]['type'] == 'TR' and \
-            lt.iloc[1:-1]['type'].all() != 'TR' and \
-            lt.iloc[0]['start_stop'] and \
-            not lt.iloc[-1]['start_stop']
+        if not lt.empty:
+            assert lt.iloc[0]['type'] == 'TR' and \
+                lt.iloc[-1]['type'] == 'TR' and \
+                lt.iloc[1:-1]['type'].all() != 'TR' and \
+                lt.iloc[0]['start_stop'] and \
+                not lt.iloc[-1]['start_stop']
         return lt
 
     def get_scheme_trial(self, i=None):
