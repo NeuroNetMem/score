@@ -83,6 +83,8 @@ class DeviceManager(QtCore.QObject):
     video_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_file_changed_signal')
     trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
+    yes_no_question_signal = QtCore.pyqtSignal(str, name='CameraDevice.yes_no_question_signal')
+    yes_no_answer_signal = QtCore.pyqtSignal(bool, name ='CameraDevice.yes_no_answer_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -123,7 +125,7 @@ class DeviceManager(QtCore.QObject):
         self.csv_out = None
         self.display_time = True
         self.save_raw_video = True
-
+        self.yes_no = False
         self.thread = None
         # this flag to close the manager
         self.to_release = False
@@ -202,6 +204,7 @@ class DeviceManager(QtCore.QObject):
 
     def trial_setup(self):
         scheme = self.session.get_scheme_trial_info()
+
         self.dialog.set_scheme(scheme)
 
         while True:
@@ -305,12 +308,32 @@ class DeviceManager(QtCore.QObject):
         if self.session:
             self.session.set_comments(comments)
 
+    @QtCore.pyqtSlot(bool)
+    def yes_no_answer(self, i):
+        self.yes_no_answer_signal.emit(i)
+        self.yes_no = i
+
     def open_files(self):
         import os
-        filename = self.video_out_filename
-        print("opening output file: ", filename, "...")
-        if os.path.exists(filename):
-            self.error_signal.emit("File " + filename + " exists, cannot proceed")
+
+        done = False
+        filename = ''
+        while not done:
+            filename = self.video_out_filename
+            print("opening output file: ", filename, "...")
+            if os.path.exists(filename):
+                self.yes_no_question_signal.emit("File " + filename + " exists, shall I start from the next trial ?")
+                loop = QtCore.QEventLoop()
+                # noinspection PyUnresolvedReferences
+                self.yes_no_answer_signal.connect(loop.quit)
+                loop.exec_()
+                if self.yes_no:
+                    self.session.skip_sequence_number()
+                    self.video_out_filename = self.video_out_filename = self.session.get_video_file_name_for_trial()
+                else:
+                    self.error_signal.emit('Cannot continue')
+            else:
+                done = True
 
         import platform
         codec_string = ''
@@ -432,6 +455,7 @@ class DeviceManager(QtCore.QObject):
             self.session.set_trial_finished()
             self.trial_ready = False
 
+    # noinspection PyUnresolvedReferences
     def analyze_trial(self):
         # noinspection PyUnresolvedReferences
         import neuroseries as nts

@@ -50,6 +50,7 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.runLineEdit.setReadOnly(ro)
         self.ui.trialLineEdit.setReadOnly(ro)
         self.ui.subjectLineEdit.setReadOnly(ro)
+        self.ui.subjectTrialLineEdit.setReadOnly(ro)
         self.ui.objectComboBox.setEnabled(not ro)
         self.ui.location1ComboBox.setEnabled(not ro)
         self.ui.location2ComboBox.setEnabled(not ro)
@@ -64,10 +65,12 @@ class TrialDialog(QtWidgets.QDialog):
         return self.obj_idxs[self.ui.objectComboBox.currentIndex()]
 
     def set_values(self, values):
+        print(values['trial'])
         self.ui.sessionLineEdit.setText(str(values['session']))
         self.ui.runLineEdit.setText(str(values['run_nr']))
         self.ui.trialLineEdit.setText(str(values['sequence_nr']))
         self.ui.subjectLineEdit.setText(str(values['subject']))
+        self.ui.subjectTrialLineEdit.setText(str(values['trial']))
         self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
         self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
         self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
@@ -77,8 +80,8 @@ class TrialDialog(QtWidgets.QDialog):
                   'sequence_nr': int(self.ui.trialLineEdit.text()), 'subject': int(self.ui.subjectLineEdit.text()),
                   'loc_1': self.locations[self.ui.location1ComboBox.currentIndex()],
                   'loc_2': self.locations[self.ui.location2ComboBox.currentIndex()],
-                  'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()]}
-
+                  'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()],
+                  'trial': int(self.ui.subjectTrialLineEdit.text())}
         return values
 
 
@@ -139,6 +142,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.commentsButton.clicked.connect(self.get_comments)
             # noinspection PyUnresolvedReferences
             self.comments_received.connect(self.device.set_comments)
+            self.device.yes_no_question_signal.connect(self.yes_no_question)
+            # noinspection PyUnresolvedReferences
+            self.yes_no_answer_signal.connect(self.device.yes_no_answer)
             self.device.error_signal.connect(self.error_and_close)
         self.ui.cameraWidget.set_device(self.device)
 
@@ -202,6 +208,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         error.showMessage(e)
         error.exec_()
         self.close_all()
+
+    yes_no_answer_signal = QtCore.pyqtSignal(bool, name='ScorerWindow.yes_no_answer_signal')
+    @QtCore.pyqtSlot(str)
+    def yes_no_question(self, q):
+        reply = QtWidgets.QMessageBox.question(self, 'Question', q, QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No)
+        self.yes_no_answer_signal.emit(reply == QtWidgets.QMessageBox.Yes)
 
     @QtCore.pyqtSlot()
     def close_all(self):

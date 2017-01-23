@@ -8,13 +8,13 @@ class SessionManager:
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None):
         self.scheme_file = filename
+        self.cur_trial = 1
         try:
             self.scheme = pd.DataFrame.from_csv(self.scheme_file, index_col='run_nr')
         except PandasError:
             raise ValueError("couldn't open file correctly")
         if not set(self.scheme.columns) > set(self.required_columns):
             raise ValueError('required columns were not present')
-        self.cur_trial = 1
         self.cur_run = initial_trial
         self.trial_ongoing = False
         self.trial_ready = False
@@ -90,6 +90,8 @@ class SessionManager:
             s = self.scheme.ix[self.cur_run].copy()
             s['sequence_nr'] = self.cur_trial
             s['run_nr'] = self.cur_run
+
+            print('get scheme, cur_trial: ', self.cur_trial)
         except KeyError:
             raise ValueError("trial not present")
         return s
@@ -97,6 +99,7 @@ class SessionManager:
     def get_trial_info(self):
         s = self.trials.ix[self.cur_trial].copy()
         s['sequence_nr'] = self.cur_trial
+        print('get trial: ', self.cur_trial)
         return s
 
     def set_trial_info(self, info):
@@ -104,7 +107,8 @@ class SessionManager:
         info['start_date'] = str(datetime.datetime.now())[:-4]
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
-
+        print('set trial, info[''sequencenr''', info['sequence_nr'])
+        print('cur_trial', self.cur_trial)
         assert info['sequence_nr'] == self.cur_trial
 
         df_update.set_index('sequence_nr', inplace=True)
@@ -174,6 +178,13 @@ class SessionManager:
 
     def add_trial(self):
         self.cur_trial += 1
+
+    def skip_sequence_number(self):
+        self.cur_trial += 1
+        res = self.trials
+        res.reset_index(inplace=True)
+        res.ix[len(res) - 1, 'sequence_nr'] = 4
+        res.set_index('sequence_nr', inplace=True)
 
     def skip_trial(self):
         self.cur_run += 1
