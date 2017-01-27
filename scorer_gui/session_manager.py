@@ -6,7 +6,21 @@ from pandas.core.common import PandasError
 class SessionManager:
     required_columns = ('condition', 'group', 'session', 'subject', 'trial',)
 
-    def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None):
+    def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None,
+                 min_free_disk_space=0):
+
+        import platform
+        free_disk_space = 400
+
+        if platform.system() == 'Darwin' or platform.system() == 'Linux':
+            import os
+            st = os.statvfs(filename)
+            free_disk_space = int(st.f_frsize * st.f_bfree / 1.e9)
+            print("{} GB of disk space available".format(free_disk_space))
+
+        if min_free_disk_space > 0 and free_disk_space < min_free_disk_space:
+            raise RuntimeError("""Insufficient amount of free disk space, (min {} GB needed).
+This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.scheme_file = filename
         self.cur_trial = 1
         try:
@@ -107,7 +121,7 @@ class SessionManager:
         info['start_date'] = str(datetime.datetime.now())[:-4]
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
-        print('set trial, info[''sequencenr''', info['sequence_nr'])
+        print('set trial, info[''sequence_nr''', info['sequence_nr'])
         print('cur_trial', self.cur_trial)
         assert info['sequence_nr'] == self.cur_trial
 

@@ -728,7 +728,7 @@ class CameraDeviceManager(DeviceManager):
                                                            1, min=1, flags=QtCore.Qt.WindowFlags())
             if not ok:
                 init_trial = 1
-            self.session = LiveSessionManager(filename, initial_trial=init_trial)
+            self.session = LiveSessionManager(filename, initial_trial=init_trial, min_free_disk_space=25)
             self.session_set_signal.emit(True)
             self.can_acquire = True
 
