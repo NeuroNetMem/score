@@ -74,6 +74,38 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
         self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
         self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
+        px = self.make_location_map(values)
+        self.ui.objLocLabel.setPixmap(px)
+
+    def make_location_map(self, values):
+        w = self.ui.objLocLabel
+        p = QtGui.QPixmap(w.width(), w.height())
+        p.fill(QtCore.Qt.white)
+        width = w.width()
+        height = w.height()
+
+        sz = min(width, height) * 0.96
+
+        painter = QtGui.QPainter()
+        pen = QtGui.QPen()
+        pen.setColor(QtCore.Qt.black)
+        pen.setWidth(5)
+        painter.begin(p)
+        painter.setPen(pen)
+        painter.drawRect(width * 0.02, height * 0.02, sz, sz)
+
+        obj_rect = {
+            'UL': QtCore.QRect(width * 0.1, height * 0.1, sz * 0.2, sz * 0.2),
+            'UR': QtCore.QRect(width * 0.7, height * 0.1, sz * 0.2, sz * 0.2),
+            'LL': QtCore.QRect(width * 0.1, height * 0.7, sz * 0.2, sz * 0.2),
+            'LR': QtCore.QRect(width * 0.7, height * 0.7, sz * 0.2, sz * 0.2)}
+
+        painter.setBrush(QtCore.Qt.black)
+        painter.drawEllipse(obj_rect[values['loc_1']])
+        painter.drawEllipse(obj_rect[values['loc_2']])
+        painter.end()
+
+        return p
 
     def get_values(self):
         values = {'session': int(self.ui.sessionLineEdit.text()), 'run_nr': int(self.ui.runLineEdit.text()),
@@ -210,6 +242,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.close_all()
 
     yes_no_answer_signal = QtCore.pyqtSignal(bool, name='ScorerWindow.yes_no_answer_signal')
+
     @QtCore.pyqtSlot(str)
     def yes_no_question(self, q):
         reply = QtWidgets.QMessageBox.question(self, 'Question', q, QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No)
