@@ -39,11 +39,14 @@ class TrialDialog(QtWidgets.QDialog):
         self.setWindowTitle("Next Trial")
 
     def set_image(self):
-        obj_idx = self.get_current_object()
-        # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
-        pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
-        pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
-        self.ui.objectLabel.setPixmap(pixmap)
+        try:
+            obj_idx = self.get_current_object()
+            # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
+            pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
+            pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
+            self.ui.objectLabel.setPixmap(pixmap)
+        except ValueError:
+            print("object not in list!")
 
     def set_readonly(self, ro):
         self.ui.sessionLineEdit.setReadOnly(ro)
