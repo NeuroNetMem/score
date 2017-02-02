@@ -17,7 +17,14 @@ class SessionManager:
             st = os.statvfs(filename)
             free_disk_space = int(st.f_frsize * st.f_bfree / 1.e9)
             print("{} GB of disk space available".format(free_disk_space))
-
+        elif platform.system() == 'Windows':
+            import os
+            import ctypes
+            dirname = os.path.dirname(os.path.abspath(filename))
+            free_bytes = ctypes.c_ulonglong(0)
+            ret = ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(dirname), None, None,
+                                                               ctypes.pointer(free_bytes))
+            free_disk_space = free_bytes.value / 1024 / 1024 / 1024
         if min_free_disk_space > 0 and free_disk_space < min_free_disk_space:
             raise RuntimeError("""Insufficient amount of free disk space, (min {} GB needed).
 This program will cowardly refuse to continue""".format(min_free_disk_space))
