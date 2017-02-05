@@ -9,9 +9,53 @@ from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
 from scorer_gui.session_manager import VideoSessionManager, LiveSessionManager
+from scorer_gui.video_devices import Cv2CameraCapture, Cv2VideoFileCapture
 
 
-def find_how_many_cameras():
+class VideoCapture:
+    def __init__(self):
+        # cv2.VideoCapture(0)
+        pass
+
+    def isOpened(self):
+        pass
+
+    def release(self):
+        pass
+
+    def get_frame_count(self):
+        pass
+
+    def get_current_frame(self):
+        # (self._device.get(cv2.CAP_PROP_POS_FRAMES))
+        pass
+
+    def get_time_ms(self):
+        # self._device.get(cv2.CAP_PROP_POS_MSEC)
+        pass
+
+    def set_frame_no(self):
+        # self._device.set(cv2.CAP_PROP_POS_FRAMES, float(val))
+        pass
+
+    def get_width(self):
+        # int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
+        pass
+
+    def get_height(self):
+        # int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        pass
+
+    def get_fps(self):
+        # int(self._device.get(cv2.CAP_PROP_FPS))
+        pass
+
+    def read(self):
+        # ret, frame = self._device.read()
+        pass
+
+
+def find_how_many_cv_cameras():
     print("NOTE: warnings about cameras failing to initialize here below can safely be ignored.")
     for i in range(10):
         # noinspection PyArgumentList
@@ -84,7 +128,7 @@ class DeviceManager(QtCore.QObject):
     trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
     yes_no_question_signal = QtCore.pyqtSignal(str, name='CameraDevice.yes_no_question_signal')
-    yes_no_answer_signal = QtCore.pyqtSignal(bool, name ='CameraDevice.yes_no_answer_signal')
+    yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -582,13 +626,13 @@ class VideoDeviceManager(DeviceManager):
 
     def init_device(self):
         # noinspection PyArgumentList
-        cd = cv2.VideoCapture(self.video_file)
+        cd = Cv2VideoFileCapture(self.video_file)
         if not cd.isOpened():
             raise RuntimeError("Could not open video file {}".format(self.video_file))
         return cd
 
     def video_last_frame(self):
-        return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
+        return self._device.get_frame_count()
 
     @QtCore.pyqtSlot()
     def query_frame(self):
@@ -597,7 +641,7 @@ class VideoDeviceManager(DeviceManager):
         if not self.paused and self.acquiring:
             ret, frame = self._device.read()
             if ret:
-                self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
+                self.frame_no = self._device.get_current_frame()
                 self.frame_pos_signal.emit(self.frame_no)
                 h, w, _ = frame.shape
                 if self.save_raw_video and self.raw_out and self.acquiring:
@@ -615,21 +659,21 @@ class VideoDeviceManager(DeviceManager):
 
     @property
     def frame_size(self):
-        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
-        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        w = self._device.get_width()
+        h = self._device.get_height()
         return int(w), int(h)
 
     @QtCore.pyqtSlot(int)
     def skip_to_frame(self, val):
-        self._device.set(cv2.CAP_PROP_POS_FRAMES, float(val))
+        self._device.set_frame_no(val)
 
     @property
     def fps(self):
-        fps = int(self._device.get(cv2.CAP_PROP_FPS))
+        fps = self._device.get_fps()
         return fps
 
     def get_cur_time(self):
-        return datetime.timedelta(milliseconds=self._device.get(cv2.CAP_PROP_POS_MSEC))
+        return datetime.timedelta(milliseconds=self._device.get_time_ms())
 
     def set_session(self, filename):
         try:
@@ -654,7 +698,7 @@ class CameraDeviceManager(DeviceManager):
     def init_device(self):
         # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
-        cd = cv2.VideoCapture(0)
+        cd = Cv2CameraCapture(self.camera_id)
         # cd = cv2.VideoCapture(self.camera_id)
         if not cd.isOpened():
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
@@ -699,8 +743,8 @@ class CameraDeviceManager(DeviceManager):
 
     @property
     def frame_size(self):
-        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
-        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
+        w = int(self._device.get_width() * self.scale)
+        h = int(self._device.get_height() * self.scale)
         if self.rotate_angle in (90, 270):
             w, h = h, w
         return int(w), int(h)
