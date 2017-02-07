@@ -10,6 +10,15 @@ from PyQt5 import QtWidgets
 
 from scorer_gui.session_manager import VideoSessionManager, LiveSessionManager
 from scorer_gui.video_devices import Cv2CameraCapture, Cv2VideoFileCapture
+from scorer_gui.ptgrey_device import PtGreyCameraCapture
+
+_have_ptgrey = False
+
+def have_ptgrey(val=None):
+    global _have_ptgrey
+    if val is not None:
+        _have_ptgrey = val
+    return _have_ptgrey
 
 
 class VideoCapture:
@@ -689,16 +698,23 @@ class VideoDeviceManager(DeviceManager):
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30
 
-    def __init__(self, camera_id=0, parent=None, session_file=None):
+    def __init__(self, camera_id=0, parent=None, session_file=None, is_ptgrey=False):
         self.camera_id = camera_id
-        super(CameraDeviceManager, self).__init__(parent=parent, session_file=session_file)
+        self.is_ptgrey = is_ptgrey
+        super().__init__(parent=parent, session_file=session_file)
         self.init_thread()
         self.paused = False
+        if is_ptgrey and not have_ptgrey():
+            raise RuntimeError('PtGrey camera requested, but not supported here')
+        print(dir(self))
 
     def init_device(self):
         # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
-        cd = Cv2CameraCapture(self.camera_id)
+        if self.is_ptgrey:
+            cd = PtGreyCameraCapture(self.camera_id)
+        else:
+            cd = Cv2CameraCapture(self.camera_id)
         # cd = cv2.VideoCapture(self.camera_id)
         if not cd.isOpened():
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))

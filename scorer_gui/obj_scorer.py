@@ -4,7 +4,7 @@ from PyQt5 import QtWidgets
 
 # noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
-from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
+from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager, have_ptgrey
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
 
@@ -26,7 +26,7 @@ class TrialDialog(QtWidgets.QDialog):
             self.locations = locations
         else:
             raise ValueError("missing argument locations")
-        # object codes are derived by the filenames of the images in the resource file
+        # object codes are derived by the file names of the images in the resource file
         d = QtCore.QDir(':/obj_images')
         l = d.entryList()
         self.obj_idxs = [int(s[:-4]) for s in l]
@@ -248,6 +248,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(str)
     def yes_no_question(self, q):
+        # noinspection PyCallByClass,PyTypeChecker
         reply = QtWidgets.QMessageBox.question(self, 'Question', q, QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No)
         self.yes_no_answer_signal.emit(reply == QtWidgets.QMessageBox.Yes)
 
@@ -262,9 +263,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def get_camera_id_to_open(self):
         # n_cameras = find_how_many_cameras()
         n_cameras = 5
+        is_ptgrey = False
+
         print("n_cameras = ", n_cameras)
         ops = [str(i) for i in range(n_cameras)]
-        print("ops: ", ops)
+        if have_ptgrey():
+            ops.append('ptgrey: 0')
         import time
         time.sleep(1)
 
@@ -278,9 +282,17 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             print("after dialog")
             if not dialog_out[1]:
                 return
-            cam = int(dialog_out[0])
 
-        self.set_camera(cam)
+            if have_ptgrey():
+                is_ptgrey = dialog_out[0][:6] == 'ptgrey'
+                if is_ptgrey:
+                    cam = int(dialog_out[0][8])
+                else:
+                    cam = int(dialog_out[0][0])
+            else:
+                cam = int(dialog_out[0][0])
+
+        self.set_camera(cam, is_ptgrey)
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
@@ -327,11 +339,11 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.destLabel.setText(os.path.basename(save_video_file))
             self.ui.rawVideoCheckBox.setEnabled(False)
 
-    def set_camera(self, camera_id):
+    def set_camera(self, camera_id, is_ptgrey=False):
         print("in set camera")
         if self.device:
             self.device.cleanup()
-        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
+        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file, is_ptgrey=is_ptgrey)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
@@ -395,8 +407,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
 def _main():
     import sys
+    print(have_ptgrey())
     app = QtWidgets.QApplication(sys.argv)
-
     window = ScorerMainWindow()
     # window.device = CameraDevice(mirrored=True)
     window.show()
@@ -406,5 +418,12 @@ def _main():
     app.exec_()
 
 
-if __name__ == '__main__':
+def _main_ptgrey():
+    print("Starting program with ptgrey camera extension. Please use the 'scorer32' script to start without ",
+          "that extension if you don't have that type of cameras. ")
+
+    have_ptgrey(True)
     _main()
+
+if __name__ == '__main__':
+    _main_ptgrey()

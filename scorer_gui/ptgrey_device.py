@@ -6,6 +6,7 @@ class PtGreyCameraCapture(VideoCapture):
     def __init__(self, index):
         super().__init__()
         # cv2.VideoCapture(0)
+        print("Starting Fly Capture:")
         self._context = pyfly2.Context()
         print("FlyCapture context opened.")
 
