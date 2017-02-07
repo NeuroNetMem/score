@@ -72,7 +72,6 @@ class Cv2Capture(VideoCapture):
         pass
 
     def read(self):
-        print('in read')
         ret, frame = self.cam.read()
         return ret, frame
 
