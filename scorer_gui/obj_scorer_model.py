@@ -464,7 +464,7 @@ class DeviceManager(QtCore.QObject):
             # noinspection PyUnusedLocal
             t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
             tpt = 5, h - 5
-            cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 0, 255), 1)
+            cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 255, 255), 1)
             cur_frame = str(self.frame_no)
             t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
             tpt = 5, h - 5 - t_size[1]
@@ -570,10 +570,11 @@ class DeviceManager(QtCore.QObject):
                 QtCore.Qt.Key_L: 'LR', QtCore.Qt.Key_3: 'LR',
                 QtCore.Qt.Key_T: 'TR'}
 
-    rect_coord = {'UL': (lambda w, h: ((8, 8), (int(w*0.3), int(h*0.3)))),
-                  'UR': (lambda w, h: ((w-8, 8), (int(w*0.7), int(h*0.3)))),
-                  'LL': (lambda w, h: ((8, h-8), (int(w*0.3), int(h*0.7)))),
-                  'LR': (lambda w, h: ((w-8, h-8), (int(w*0.7), int(h*0.7))))}
+    border_size = 30
+    rect_coord = {'UL': (lambda w, h: ((border_size, border_size), (int(w*0.3), int(h*0.3)))),
+                  'UR': (lambda w, h: ((w-border_size, border_size), (int(w*0.7), int(h*0.3)))),
+                  'LL': (lambda w, h: ((border_size, h-border_size), (int(w*0.3), int(h*0.7)))),
+                  'LR': (lambda w, h: ((w-border_size, h-border_size), (int(w*0.7), int(h*0.7))))}
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
@@ -618,7 +619,7 @@ class DeviceManager(QtCore.QObject):
         for place, state in self.obj_state.items():
             if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
-                cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
+                cv2.rectangle(frame, pt1, pt2, (255, 255, 255), 2)
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
         self.add_timestamp_string(frame)
