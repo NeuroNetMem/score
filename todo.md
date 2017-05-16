@@ -17,3 +17,7 @@
 - recompression of videos
 - video jumps
 - video rotation can crash
+
+## Misc
+
+- Windows conda instructions
