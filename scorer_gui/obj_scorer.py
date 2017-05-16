@@ -1,3 +1,9 @@
+import os
+import sys
+import logging
+
+from scorer_gui import GIT_VERSION
+
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
@@ -11,22 +17,27 @@ from scorer_gui.trial_dialog_ui import Ui_TrialDialog
 
 class TrialDialog(QtWidgets.QDialog):
     def __init__(self, caller=None, trial_params=None, locations=None):
-        # noinspection PyUnresolvedReferences
-        flags_ = QtCore.Qt.WindowFlags()
-        super(TrialDialog, self).__init__(flags=flags_)
+        super(TrialDialog, self).__init__(flags=QtCore.Qt.WindowFlags())
+        self.log = logging.getLogger(__name__)
+        self.log.debug('Trial Dialog initializing')
+
         self.ui = Ui_TrialDialog()
         self.ui.setupUi(self)
         self.ui.objectComboBox.currentIndexChanged.connect(self.update_object_change)
         if caller:
             self.ui.addTrialButton.clicked.connect(caller.add_trial)
             self.ui.skipTrialButton.clicked.connect(caller.skip_trial)
+
         if locations:
             self.ui.location1ComboBox.addItems(locations)
             self.ui.location2ComboBox.addItems(locations)
             self.locations = locations
         else:
+            self.log.error('Locations missing')
             raise ValueError("missing argument locations")
+
         # object codes are derived by the filenames of the images in the resource file
+        self.log.debug('Loading object images index')
         d = QtCore.QDir(':/obj_images')
         l = d.entryList()
         self.obj_idxs = [int(s[:-4]) for s in l]
@@ -39,14 +50,16 @@ class TrialDialog(QtWidgets.QDialog):
         self.setWindowTitle("Next Trial")
 
     def set_image(self):
+        obj_idx = self.get_current_object()
         try:
-            obj_idx = self.get_current_object()
             # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
             pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
-            pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
-            self.ui.objectLabel.setPixmap(pixmap)
         except ValueError:
-            print("object not in list!")
+            self.log.error('Object {} not in list!'.format(obj_idx))
+            return None
+        else:
+            self.ui.objectLabel.setPixmap(pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio))
+        return obj_idx
 
     def set_readonly(self, ro):
         self.ui.sessionLineEdit.setReadOnly(ro)
@@ -58,9 +71,8 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.location1ComboBox.setEnabled(not ro)
         self.ui.location2ComboBox.setEnabled(not ro)
 
-    # noinspection PyUnusedLocal
     @QtCore.pyqtSlot(int)
-    def update_object_change(self, i):
+    def update_object_change(self, _):
         self.set_image()
         self.update()
 
@@ -125,14 +137,16 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     comments_received = QtCore.pyqtSignal(str, name='ScorerMainWindow.comments_received')
 
     def __init__(self):
-        # noinspection PyUnresolvedReferences
-        flags_ = QtCore.Qt.WindowFlags()
-        super(ScorerMainWindow, self).__init__(flags=flags_)
+        super(ScorerMainWindow, self).__init__(flags=QtCore.Qt.WindowFlags())
+        self.log = logging.getLogger(__name__)
+        self.log.debug('Initializing main window')
+
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setMenuBar(self.ui.menubar)
         self.session_file = None
         self._device = None
+
         self.ui.actionQuit.triggered.connect(self.close_all)
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_File.triggered.connect(self.get_video_file_to_open)
@@ -151,6 +165,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @device.setter
     def device(self, dev):
+        self.log.debug('Setting device to {}'.format(dev))
         self._device = dev
         if dev:
             # noinspection PyUnresolvedReferences
@@ -185,6 +200,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(bool)
     def session_was_set(self, s):
+        self.log.debug('Session {} was set'.format(s))
         if s:
             self.ui.actionOpen_Camera.setEnabled(False)
             self.ui.actionOpen_File.setEnabled(False)
@@ -197,13 +213,18 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def video_size_changed(self):
+        # TODO: Show new size
+        # FIXME: Check if video writer is running and complain if so
+        self.log.debug('Video size changed')
         self.updateGeometry()
 
     @QtCore.pyqtSlot()
     def video_finished(self):
+        self.log.info('Video completed')
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Information)
 
+        # TODO: Which video?
         msg.setText("Video Completed")
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
         msg.exec_()
@@ -217,6 +238,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(bool)
     def acquisition_started_stopped(self, val):
+        self.log.debug('Acquisition state toggle to: {}'.format(val))
         self.ui.playButton.setEnabled(False)
         if val:
             self.ui.pauseButton.setEnabled(True)
@@ -228,6 +250,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(bool)
     def has_paused(self, val):
+        self.log.debug('Pause state toggle to: {}'.format(val))
         if val:
             self.ui.playButton.setEnabled(True)
             self.ui.pauseButton.setEnabled(False)
@@ -239,6 +262,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(str)
     def error_and_close(self, e):
+        self.log.error('Closing due to: {}'.format(e))
         error = QtWidgets.QErrorMessage()
         error.showMessage(e)
         error.exec_()
@@ -248,67 +272,78 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(str)
     def yes_no_question(self, q):
+        self.log.debug('Y/N question')
         reply = QtWidgets.QMessageBox.question(self, 'Question', q, QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No)
         self.yes_no_answer_signal.emit(reply == QtWidgets.QMessageBox.Yes)
 
     @QtCore.pyqtSlot()
     def close_all(self):
-        import sys
+        self.log.debug('Closing all')
+
         if self.device:
             self.device.cleanup()
-        sys.exit()
+
+        self.log.debug('Device cleaned up. Quitting.')
+        QtCore.QCoreApplication.quit()
 
     @QtCore.pyqtSlot()
     def get_camera_id_to_open(self):
+        self.log.debug('Open camera by id...')
         # n_cameras = find_how_many_cameras()
         n_cameras = 5
-        print("n_cameras = ", n_cameras)
+        self.log.debug("n_cameras: {}".format(n_cameras))
         ops = [str(i) for i in range(n_cameras)]
-        print("ops: ", ops)
-        import time
-        time.sleep(1)
+
+        # FIXME: Sleep needed?
+        # import time
+        # time.sleep(1)
 
         if len(ops) == 1:
             cam = ops[0]
         else:
-            print("before dialog")
             # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
             dialog_out = QtWidgets.QInputDialog.getItem(self, "Open Camera", "Which camera id do you want to open?",
                                                         ops)
-            print("after dialog")
             if not dialog_out[1]:
                 return
             cam = int(dialog_out[0])
 
+        self.log.debug('Chose camera {}'.format(cam))
         self.set_camera(cam)
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
     def get_video_file_to_open(self):
-        import os
-
+        self.log.debug('Asking for video location to open...')
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video File",
                                                            os.getcwd(), "Videos (*.avi)")
         open_video_file = dialog_out[0]
         if open_video_file:
             self.set_video(open_video_file)
+        else:
+            self.log.debug('No video file location given. Doing nothing.'.format(open_video_file))
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
     def get_live_session_file_to_open(self):
-        import os
+        self.log.debug('Asking for session file location to open...')
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Live Session File",
                                                            os.getcwd(), "CSV (*.csv)")
-        self.session_file = dialog_out[0]
-        if self._device and isinstance(self._device, CameraDeviceManager):
-            self._device.set_session(self.session_file)
+        session_file = dialog_out[0]
+        if session_file:
+            self.log.info('Session file: {}'.format(self.session_file))
+            self.session_file = session_file
+            if self._device and isinstance(self._device, CameraDeviceManager):
+                self._device.set_session(self.session_file)
+            else:
+                self.get_camera_id_to_open()
         else:
-            self.get_camera_id_to_open()
+            self.log.info('No session file given. Doing nothing.')
 
-    # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):
+        self.log.error('Session processing from video not implemented yet.')
         error = QtWidgets.QErrorMessage()
         error.showMessage("Session processing from video not implemented yet.")
         error.exec_()
@@ -316,7 +351,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
     def get_save_video_file(self):
-        import os
+        self.log.debug('Asking for video file name for saving...')
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getSaveFileName(self, "Save Video File",
                                                            os.path.join(os.getcwd(), 'untitled.avi'),
@@ -326,12 +361,16 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.set_out_video_file(save_video_file)
             self.ui.destLabel.setText(os.path.basename(save_video_file))
             self.ui.rawVideoCheckBox.setEnabled(False)
+            self.log.info('Save video to location: {}'.format(save_video_file))
+        else:
+            self.log.debug('No location given. ({})'.format(save_video_file))
 
     def set_camera(self, camera_id):
-        print("in set camera")
+        self.log.debug('Set camera to {}'.format(camera_id))
         if self.device:
             self.device.cleanup()
         self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
+
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
@@ -345,12 +384,15 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
 
     def set_video(self, video_filename):
-        import os
+        self.log.info('Video file: {}'.format(video_filename))
+
         if self.device:
             self.device.cleanup()
+
         self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file)
         self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
         last_frame = self.device.video_last_frame()
+
         self.ui.videoInSlider.setEnabled(True)
         self.ui.videoInSlider.setMinimum(0)
         self.ui.videoInSlider.setMaximum(last_frame)
@@ -376,6 +418,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def get_comments(self):
+        self.log.debug('Comment dialog')
         # noinspection PyArgumentList
         dialog = QtWidgets.QInputDialog(None)
         dialog.setInputMode(QtWidgets.QInputDialog.TextInput)
@@ -389,22 +432,26 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     def process_comments(self):
         text = self.comments_dialog.textValue()
-        print("window comments: " + text)
+        self.log.info('Processing comments: {}'.format(text))
         self.comments_received.emit(text)
 
 
 def _main():
-    import sys
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.info('Starting obj_scorer with git version {}'.format(GIT_VERSION))
+
     app = QtWidgets.QApplication(sys.argv)
 
     window = ScorerMainWindow()
     # window.device = CameraDevice(mirrored=True)
     window.show()
-    app.quitOnLastWindowClosed = False
+    app.quitOnLastWindowClosed = True
     # noinspection PyUnresolvedReferences
     app.lastWindowClosed.connect(window.close_all)
-    app.exec_()
 
+    logging.info('Starting app')
+    app.exec_()
+    logging.info('All done.')
 
 if __name__ == '__main__':
     _main()
