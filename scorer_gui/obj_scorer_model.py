@@ -571,10 +571,10 @@ class DeviceManager(QtCore.QObject):
                 QtCore.Qt.Key_T: 'TR'}
 
     border_size = 30
-    rect_coord = {'UL': (lambda w, h: ((border_size, border_size), (int(w*0.3), int(h*0.3)))),
-                  'UR': (lambda w, h: ((w-border_size, border_size), (int(w*0.7), int(h*0.3)))),
-                  'LL': (lambda w, h: ((border_size, h-border_size), (int(w*0.3), int(h*0.7)))),
-                  'LR': (lambda w, h: ((w-border_size, h-border_size), (int(w*0.7), int(h*0.7))))}
+    rect_coord = {'UL': (lambda w, h: ((DeviceManager.border_size, DeviceManager.border_size), (int(w*0.3), int(h*0.3)))),
+                  'UR': (lambda w, h: ((w-DeviceManager.border_size, DeviceManager.border_size), (int(w*0.7), int(h*0.3)))),
+                  'LL': (lambda w, h: ((DeviceManager.border_size, h-DeviceManager.border_size), (int(w*0.3), int(h*0.7)))),
+                  'LR': (lambda w, h: ((w-DeviceManager.border_size, h-DeviceManager.border_size), (int(w*0.7), int(h*0.7))))}
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
