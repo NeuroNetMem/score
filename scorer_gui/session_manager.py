@@ -22,8 +22,8 @@ class SessionManager:
             import ctypes
             dirname = os.path.dirname(os.path.abspath(filename))
             free_bytes = ctypes.c_ulonglong(0)
-            ret = ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(dirname), None, None,
-                                                               ctypes.pointer(free_bytes))
+            _ = ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(dirname), None, None,
+                                                           ctypes.pointer(free_bytes))
             free_disk_space = free_bytes.value / 1024 / 1024 / 1024
         if min_free_disk_space > 0 and free_disk_space < min_free_disk_space:
             raise RuntimeError("""Insufficient amount of free disk space, (min {} GB needed).
@@ -42,7 +42,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
         self.result_columns = None
         self.result_file = None
-        self.trials = None
+        self.trials_results = None
 
         self.log_file = None
         self.event_columns = None
@@ -72,11 +72,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.result_columns.extend(self.extra_trial_columns)
         if os.path.exists(self.result_file):
             shutil.copyfile(self.result_file, self.result_file + '.bk')
-            self.trials = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
-            self.cur_trial = self.trials.index.max() + 1
+            self.trials_results = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
+            self.cur_trial = self.trials_results.index.max() + 1
         else:
-            self.trials = pd.DataFrame(columns=self.result_columns)
-            self.trials.set_index('sequence_nr', inplace=True)
+            self.trials_results = pd.DataFrame(columns=self.result_columns)
+            self.trials_results.set_index('sequence_nr', inplace=True)
 
     def get_result_file_name(self):
         import os
@@ -118,7 +118,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         return s
 
     def get_trial_info(self):
-        s = self.trials.ix[self.cur_trial].copy()
+        s = self.trials_results.ix[self.cur_trial].copy()
         s['sequence_nr'] = self.cur_trial
         print('get trial: ', self.cur_trial)
         return s
@@ -133,19 +133,19 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         assert info['sequence_nr'] == self.cur_trial
 
         df_update.set_index('sequence_nr', inplace=True)
-        self.trials.loc[info['sequence_nr']] = np.NaN
-        self.trials.update(df_update)
+        self.trials_results.loc[info['sequence_nr']] = np.NaN
+        self.trials_results.update(df_update)
 
         # complete the results dataframe with info from the scheme dataframe
-        r = self.trials.loc[info['sequence_nr']].copy()
+        r = self.trials_results.loc[info['sequence_nr']].copy()
         r.update(self.scheme.loc[self.cur_run])
-        self.trials.loc[info['sequence_nr']] = r
+        self.trials_results.loc[info['sequence_nr']] = r
 
     def set_trial_finished(self):
         self.trial_ongoing = False
         if self.comments:
-            self.trials.loc[self.cur_trial]['comments'] = self.comments
-        self.trials.to_csv(self.result_file)
+            self.trials_results.loc[self.cur_trial]['comments'] = self.comments
+        self.trials_results.to_csv(self.result_file)
         self.events.to_csv(self.log_file)
         self.cur_trial += 1
         self.cur_run += 1
@@ -194,15 +194,15 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
         df_update.set_index('sequence_nr', inplace=True)
-        # self.trials.loc[info['sequence_nr']] = np.NaN
-        self.trials.update(df_update)
+        # self.trials_results.loc[info['sequence_nr']] = np.NaN
+        self.trials_results.update(df_update)
 
     def add_trial(self):
         self.cur_trial += 1
 
     def skip_sequence_number(self):
         self.cur_trial += 1
-        res = self.trials
+        res = self.trials_results
         res.reset_index(inplace=True)
         res.ix[len(res) - 1, 'sequence_nr'] = 4
         res.set_index('sequence_nr', inplace=True)
@@ -212,7 +212,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def close(self):
         self.events.to_csv(self.log_file)
-        self.trials.to_csv(self.result_file)
+        self.trials_results.to_csv(self.result_file)
 
 
 class VideoSessionManager(SessionManager):

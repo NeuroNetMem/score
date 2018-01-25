@@ -84,7 +84,7 @@ class DeviceManager(QtCore.QObject):
     trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
     yes_no_question_signal = QtCore.pyqtSignal(str, name='CameraDevice.yes_no_question_signal')
-    yes_no_answer_signal = QtCore.pyqtSignal(bool, name ='CameraDevice.yes_no_answer_signal')
+    yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 1
@@ -271,6 +271,8 @@ class DeviceManager(QtCore.QObject):
                 self.acquiring = True
                 if not self.capturing:
                     self.capturing = True
+            self.trial_ready = True
+            self.trial_completed = False
 
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
@@ -502,7 +504,7 @@ class DeviceManager(QtCore.QObject):
 
     @property
     def frame_size(self):
-        return None  # pure virtual
+        return None, None  # pure virtual
 
     @property
     def fps(self):
@@ -536,11 +538,12 @@ class DeviceManager(QtCore.QObject):
         if msg == 'TR1' and not self.trial_completed:
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
+            print("trial_on: ", trial_on)
             msg = 'TR' + str(trial_on)
             if trial_on:
                 self.trial_ongoing = True
                 if self.session:
-                    self.start_time = datetime.datetime.now()
+                    self.start_time = datetime.datetime.now()  # TODO how to get the right times when using video?
             else:
                 self.trial_ongoing = False
                 self.trial_completed = True
@@ -565,6 +568,7 @@ class DeviceManager(QtCore.QObject):
         for place, state in self.obj_state.items():
             if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
+                print("rectangle: ", place)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
@@ -578,6 +582,7 @@ class VideoDeviceManager(DeviceManager):
     def __init__(self, video_file=None, parent=None, session_file=None):
         self.video_file = video_file
         super(VideoDeviceManager, self).__init__(parent=parent, session_file=session_file)
+        self.save_raw_video = False
         self.init_thread()
 
     def init_device(self):
@@ -633,13 +638,20 @@ class VideoDeviceManager(DeviceManager):
 
     def set_session(self, filename):
         try:
-            self.session = VideoSessionManager(filename)
+            init_trial = 1  # TODO make it a choice for the user
+            try:
+                self.session = VideoSessionManager(filename, initial_trial=init_trial, min_free_disk_space=25)
+            except RuntimeError as e:
+                self.error_signal.emit(str(e))
+
             self.session_set_signal.emit(True)
+            self.can_acquire = True
         except ValueError as e:
-            import warnings
-            warnings.warn(str(e))
             self.session = None
             self.session_set_signal.emit(False)
+            import warnings
+            warnings.warn(str(e))
+            self.can_acquire = False
 
 
 class CameraDeviceManager(DeviceManager):
@@ -673,6 +685,9 @@ class CameraDeviceManager(DeviceManager):
                 if self.splash_screen_countdown == 1:
                     self.trial_ready = True
                     self.trial_completed = False
+                else:
+                    self.trial_ready = False
+                    self.trial_completed = True
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()

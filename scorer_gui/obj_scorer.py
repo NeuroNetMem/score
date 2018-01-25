@@ -135,11 +135,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._device = None
         self.ui.actionQuit.triggered.connect(self.close_all)
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
-        self.ui.actionOpen_File.triggered.connect(self.get_video_file_to_open)
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
         self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
-        self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
-        self.ui.actionSave_to.setEnabled(False)
+        # self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
+        # self.ui.actionSave_to.setEnabled(False)
         self.ui.rawVideoCheckBox.setEnabled(False)
         self.ui.displayTsCheckBox.setChecked(True)
         self.setWindowTitle("Object in place task")
@@ -289,10 +288,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video File",
-                                                           os.getcwd(), "Videos (*.avi)")
+                                                           os.getcwd(), "Videos (*.mp4)")
         open_video_file = dialog_out[0]
         if open_video_file:
-            self.set_video(open_video_file)
+            self.set_video_in(open_video_file)
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
@@ -309,23 +308,36 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):
-        error = QtWidgets.QErrorMessage()
-        error.showMessage("Session processing from video not implemented yet.")
-        error.exec_()
-
-    # noinspection PyArgumentList
-    @QtCore.pyqtSlot()
-    def get_save_video_file(self):
         import os
-        # noinspection PyCallByClass,PyTypeChecker
-        dialog_out = QtWidgets.QFileDialog.getSaveFileName(self, "Save Video File",
-                                                           os.path.join(os.getcwd(), 'untitled.avi'),
-                                                           "Videos (*.avi)")
-        save_video_file = dialog_out[0]
-        if save_video_file:
-            self.device.set_out_video_file(save_video_file)
-            self.ui.destLabel.setText(os.path.basename(save_video_file))
-            self.ui.rawVideoCheckBox.setEnabled(False)
+        # error = QtWidgets.QErrorMessage()
+        # error.showMessage("Session processing from video not implemented yet.")
+        # error.exec_()
+        dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
+                                                           os.getcwd(), "CSV (*.csv)")
+        video_in_filename = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
+                                                                  os.getcwd(), "Videos (*.mp4)")
+        video_in_filename = video_in_filename[0]
+        self.session_file = dialog_out[0]
+        self.set_video_in(video_in_filename)
+        if self._device and isinstance(self._device, VideoDeviceManager):
+            self._device.set_session(self.session_file)
+        else:
+            raise RuntimeError("can't open video session ")
+
+
+    # # noinspection PyArgumentList
+    # @QtCore.pyqtSlot()
+    # def get_save_video_file(self):
+    #     import os
+    #     # noinspection PyCallByClass,PyTypeChecker
+    #     dialog_out = QtWidgets.QFileDialog.getSaveFileName(self, "Save Video File",
+    #                                                        os.path.join(os.getcwd(), 'untitled.avi'),
+    #                                                        "Videos (*.avi)")
+    #     save_video_file = dialog_out[0]
+    #     if save_video_file:
+    #         self.device.set_out_video_file(save_video_file)
+    #         self.ui.destLabel.setText(os.path.basename(save_video_file))
+    #         self.ui.rawVideoCheckBox.setEnabled(False)
 
     def set_camera(self, camera_id):
         print("in set camera")
@@ -344,7 +356,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.rotateComboBox.setCurrentIndex(0)
         self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
 
-    def set_video(self, video_filename):
+    def set_video_in(self, video_filename):
         import os
         if self.device:
             self.device.cleanup()

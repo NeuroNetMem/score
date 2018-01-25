@@ -169,8 +169,6 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actionOpen_Live_Session)
         self.menuFile.addAction(self.actionOpen_Video_Session)
         self.menuFile.addAction(self.actionOpen_Camera)
-        self.menuFile.addAction(self.actionOpen_File)
-        self.menuFile.addAction(self.actionSave_to)
         self.menuFile.addAction(self.actionQuit)
         self.menubar.addAction(self.menuFile.menuAction())
 
