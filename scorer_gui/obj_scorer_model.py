@@ -132,7 +132,7 @@ class DeviceManager(QtCore.QObject):
 
         self._device = None
         self._device = self.init_device()
-        self.start_time = datetime.datetime.now()
+        self.start_time = self.get_absolute_time()
         self.frame_no = 0
 
         self.trial_ongoing = False
@@ -197,7 +197,7 @@ class DeviceManager(QtCore.QObject):
     @acquiring.setter
     def acquiring(self, val):
         if val:
-            self.start_time = datetime.datetime.now()
+            self.start_time = self.get_absolute_time()
             self.frame_no = 0
         self._acquiring = val
         self.is_acquiring_signal.emit(val)
@@ -420,7 +420,12 @@ class DeviceManager(QtCore.QObject):
             cv2.putText(frame, cur_frame, tpt, font, 0.5, (0, 255, 255), 1)
 
     def get_cur_time(self):
+        """get current time, null implementation"""
         return datetime.timedelta(0)
+
+    def get_absolute_time(self):
+        """return current absolute time, null implementation"""
+        return None
 
     @QtCore.pyqtSlot()
     def cleanup(self):
@@ -543,7 +548,7 @@ class DeviceManager(QtCore.QObject):
             if trial_on:
                 self.trial_ongoing = True
                 if self.session:
-                    self.start_time = datetime.datetime.now()  # TODO how to get the right times when using video?
+                    self.start_time = self.get_absolute_time()  # TODO how to get the right times when using video?
             else:
                 self.trial_ongoing = False
                 self.trial_completed = True
@@ -568,7 +573,6 @@ class DeviceManager(QtCore.QObject):
         for place, state in self.obj_state.items():
             if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
-                print("rectangle: ", place)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
@@ -634,7 +638,8 @@ class VideoDeviceManager(DeviceManager):
         return fps
 
     def get_cur_time(self):
-        return datetime.timedelta(milliseconds=self._device.get(cv2.CAP_PROP_POS_MSEC))
+        # return datetime.timedelta(milliseconds=self._device.get(cv2.CAP_PROP_POS_MSEC))
+        return datetime.timedelta(milliseconds=1000 * self.frame_no / self.fps)
 
     def set_session(self, filename):
         try:
@@ -733,6 +738,9 @@ class CameraDeviceManager(DeviceManager):
                 return datetime.datetime.now() - self.start_time
         else:
             return datetime.datetime.now() - self.start_time
+
+    def get_absolute_time(self):
+        return datetime.datetime.now()
 
     def set_session(self, filename):
         try:

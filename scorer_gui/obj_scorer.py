@@ -28,8 +28,8 @@ class TrialDialog(QtWidgets.QDialog):
             raise ValueError("missing argument locations")
         # object codes are derived by the filenames of the images in the resource file
         d = QtCore.QDir(':/obj_images')
-        l = d.entryList()
-        self.obj_idxs = [int(s[:-4]) for s in l]
+        lst = d.entryList()
+        self.obj_idxs = [int(s[:-4]) for s in lst]
         self.obj_idxs.sort()
         str_obj_idxs = [str(i) for i in self.obj_idxs]
         self.ui.objectComboBox.addItems(str_obj_idxs)
@@ -166,7 +166,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.pauseButton.clicked.connect(self.device.set_paused)
             self.ui.stopButton.clicked.connect(self.device.stop_acquisition)
             self.ui.rawVideoCheckBox.toggled.connect(self.device.set_raw_out)
-            self.ui.rawVideoCheckBox.setChecked(True)
+            self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
             self.device.size_changed_signal.connect(self.video_size_changed)
@@ -288,7 +288,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video File",
-                                                           os.getcwd(), "Videos (*.mp4)")
+                                                           os.getcwd(), "Videos (*.mp4 *.avi)")
         open_video_file = dialog_out[0]
         if open_video_file:
             self.set_video_in(open_video_file)
@@ -315,7 +315,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
                                                            os.getcwd(), "CSV (*.csv)")
         video_in_filename = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
-                                                                  os.getcwd(), "Videos (*.mp4)")
+                                                                  os.getcwd(), "Videos (*.mp4 *.avi)")
         video_in_filename = video_in_filename[0]
         self.session_file = dialog_out[0]
         self.set_video_in(video_in_filename)
@@ -323,7 +323,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self._device.set_session(self.session_file)
         else:
             raise RuntimeError("can't open video session ")
-
 
     # # noinspection PyArgumentList
     # @QtCore.pyqtSlot()
