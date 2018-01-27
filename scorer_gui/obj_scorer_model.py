@@ -5,10 +5,10 @@ import time
 import datetime
 
 from PyQt5 import QtCore
-from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
 from scorer_gui.session_manager import VideoSessionManager, LiveSessionManager
+from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 
 
 def find_how_many_cameras():
@@ -22,8 +22,8 @@ def find_how_many_cameras():
     return 1
 
 
-
 class TrialDialogController(QtCore.QObject):
+    # TODO move to object space
     dialog_done_signal = QtCore.pyqtSignal(name="TrialDialogController.dialog_done_signal")
 
     def __init__(self, caller, locations, parent=None):
@@ -83,10 +83,6 @@ class DeviceManager(QtCore.QObject):
     def __init__(self, parent=None, session_file=None):
         super(DeviceManager, self).__init__(parent)
 
-        # initialize tracking controller
-        self.obj_state = {}
-        self.init_obj_state()
-
         # initializing image display
         self.mirrored = False
         self.rotate_angle = 0
@@ -101,21 +97,20 @@ class DeviceManager(QtCore.QObject):
             self.set_session(session_file)
         self.splash_screen = None
         self.splash_screen_countdown = 0
-        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()))
+        self.analyzer = ObjectSpaceFrameAnalyzer(self)  # TODO make this configurable
+        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
         # initialize output
         self.video_out_filename = None
         self.out = None
         self.raw_out = None
-        self.csv_out = None
         self.display_time = True
         self.save_raw_video = True
         self.yes_no = False
         self.thread = None
         # this flag to close the manager
         self.to_release = False
-
         self._device = None
         self._device = self.init_device()
         self.start_time = self.get_absolute_time()
@@ -288,8 +283,6 @@ class DeviceManager(QtCore.QObject):
     def set_out_video_file(self, filename):
         self.video_out_filename = filename
         self.open_files()
-        if not self.session:
-            self.open_csv_files()
 
     @QtCore.pyqtSlot(str)
     def set_comments(self, comments):
@@ -358,33 +351,12 @@ class DeviceManager(QtCore.QObject):
             self.raw_out.release()
             self.raw_out = None
 
-    def open_csv_files(self):
-        filename_csv = self.make_csv_filename(self.video_out_filename)
-        self.csv_out = open(filename_csv, 'w')
-
     @staticmethod
     def make_raw_filename(video_filename):
         import os
         dirname = os.path.dirname(video_filename)
         basename, _ = os.path.splitext(os.path.basename(video_filename))
         filename = os.path.join(dirname, basename + '_raw.avi')
-        return filename
-
-    @staticmethod
-    def make_csv_filename(video_filename):
-        import os
-        import glob
-        dirname = os.path.dirname(video_filename)
-        basename, _ = os.path.splitext(os.path.basename(video_filename))
-        gl = os.path.join(dirname, basename + '_????.csv')
-        ex_csv_files = glob.glob(gl)
-        if len(ex_csv_files) == 0:
-            filename = os.path.join(dirname, basename + '_0001.csv')
-        else:
-            ex_nos = [int(s[-8:-4]) for s in ex_csv_files]
-            csv_no = max(ex_nos) + 1
-            csv_no = str(csv_no).zfill(4)
-            filename = os.path.join(dirname, basename + '_' + csv_no + '.csv')
         return filename
 
     @QtCore.pyqtSlot()
@@ -429,10 +401,10 @@ class DeviceManager(QtCore.QObject):
         if self.out:
             self.out.release()
             self.out = None
-        if self.csv_out:
-            self.csv_out.close()
         if self.thread:
             self.thread.quit()
+        if self.analyzer:
+            self.analyzer.close()
 
     def finalize_trial(self):
         if self.trial_ready:
@@ -460,7 +432,7 @@ class DeviceManager(QtCore.QObject):
         st = lt.iloc[0]['trial_time']
         en = st + 300
         trial_5_min = nts.IntervalSet(st, en, time_units='s')
-        locations = list(self.rect_coord.keys())
+        locations = list(self.analyzer.rect_coord.keys())
         explore_time = {}
         explore_time_5 = {}
         for l in locations:
@@ -501,71 +473,25 @@ class DeviceManager(QtCore.QObject):
     def fps(self):
         return 0  # pure virtual
 
-    # the following definitions are the business logic of the experiment,
-    # they may be overridden for a different experiment
-
-    dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_7: 'UL',
-                QtCore.Qt.Key_O: 'UR', QtCore.Qt.Key_9: 'UR',
-                QtCore.Qt.Key_J: 'LL', QtCore.Qt.Key_1: 'LL',
-                QtCore.Qt.Key_L: 'LR', QtCore.Qt.Key_3: 'LR',
-                QtCore.Qt.Key_T: 'TR'}
-
-    rect_coord = {'UL': (lambda w, h: ((8, 8), (int(w*0.3), int(h*0.3)))),
-                  'UR': (lambda w, h: ((w-8, 8), (int(w*0.7), int(h*0.3)))),
-                  'LL': (lambda w, h: ((8, h-8), (int(w*0.3), int(h*0.7)))),
-                  'LR': (lambda w, h: ((w-8, h-8), (int(w*0.7), int(h*0.7))))}
-
-    def init_obj_state(self):
-        self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
-
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
 
         if self.session and not self.trial_ready:
             return
-        t = self.get_cur_time()
-        if msg == 'TR0':
-            return
-        if msg == 'TR1' and not self.trial_completed:
-            trial_on = 1 - self.obj_state['TR']
-            self.obj_state['TR'] = trial_on
-            print("trial_on: ", trial_on)
-            msg = 'TR' + str(trial_on)
-            if trial_on:
-                self.trial_ongoing = True
-                if self.session:
-                    self.start_time = self.get_absolute_time()  # TODO how to get the right times when using video?
-            else:
-                self.trial_ongoing = False
-                self.trial_completed = True
-        else:
-            if self.session and not self.trial_ongoing:
-                return
-            if msg[:-1] in self.rect_coord and msg[-1] == '1':
-                self.obj_state[msg[:-1]] = 1
-            else:
-                self.obj_state[msg[:-1]] = 0
-
-        if self.acquiring and self.capturing:
-
-            ts = t.seconds + 1.e-6 * t.microseconds
-            if self.session:
-                self.session.set_event(ts, self.frame_no, msg)
-            elif self.csv_out:
-                self.csv_out.write("{},{},{}\n".format(ts, self.frame_no, msg))
+        if self.analyzer:
+            self.analyzer.process_message(msg)
 
     def process_frame(self, frame):
-        h, w, _ = frame.shape
-        for place, state in self.obj_state.items():
-            if place in self.rect_coord and state:
-                pt1, pt2 = self.rect_coord[place](w, h)
-                cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
-        if self.obj_state['TR']:
-            cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
+        if self.analyzer:
+            self.analyzer.process_frame(frame)
         self.add_timestamp_string(frame)
 
     def key_interface(self):
-        return self.dir_keys
+        if self.analyzer:
+            return self.analyzer.dir_keys
+        else:
+            return {}
+
 
 class VideoDeviceManager(DeviceManager):
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
@@ -752,5 +678,3 @@ class CameraDeviceManager(DeviceManager):
             self.session_set_signal.emit(False)
             import warnings
             warnings.warn(str(e))
-
-
