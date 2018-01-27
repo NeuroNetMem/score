@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(947, 850)
+        MainWindow.resize(959, 850)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -22,13 +22,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.cameraWidget = CameraWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.cameraWidget.sizePolicy().hasHeightForWidth())
-        self.cameraWidget.setSizePolicy(sizePolicy)
-        self.cameraWidget.setMaximumSize(QtCore.QSize(1280, 720))
+        self.cameraWidget = CVVideoWidget(self.centralwidget)
         self.cameraWidget.setObjectName("cameraWidget")
         self.verticalLayout.addWidget(self.cameraWidget)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -141,7 +135,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addLayout(self.horizontalLayout_4)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 947, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 959, 22))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -209,7 +203,7 @@ class Ui_MainWindow(object):
         self.actionOpen_Live_Session.setText(_translate("MainWindow", "Open Live Session..."))
         self.actionOpen_Video_Session.setText(_translate("MainWindow", "Open Video Session..."))
 
-from scorer_gui.obj_scorer_model import CameraWidget
+from scorer_gui.cv_video_widget import CVVideoWidget
 import scorer_gui.obj_rc
 import scorer_gui.play_rc
 
