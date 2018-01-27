@@ -1,6 +1,7 @@
 import cv2
 
 from PyQt5 import QtCore
+from scorer_gui.global_defs import TrialState
 
 
 class FrameAnalyzer:
@@ -59,20 +60,19 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         t = self.device.get_cur_time()
         if msg == 'TR0':
             return
-        if msg == 'TR1' and not self.device.trial_completed:
+        if msg == 'TR1' and self.device.trial_state != TrialState.COMPLETED:
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
             print("trial_on: ", trial_on)
             msg = 'TR' + str(trial_on)
             if trial_on:
-                self.device.trial_ongoing = True  # TODO see if trial_ongoing and trial_completed may be merged
+                self.device.trial_state = TrialState.ONGOING
                 if self.device.session:
                     self.device.start_time = self.device.get_absolute_time()
             else:
-                self.device.trial_ongoing = False
-                self.device.trial_completed = True
+                self.device.trial_state = TrialState.COMPLETED
         else:
-            if self.device.session and not self.device.trial_ongoing:
+            if self.device.session and  self.device.trial_state != TrialState.ONGOING:
                 return
             if msg[:-1] in self.rect_coord and msg[-1] == '1':
                 self.obj_state[msg[:-1]] = 1

@@ -7,8 +7,10 @@ import datetime
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
-from scorer_gui.session_manager import VideoSessionManager, LiveSessionManager
+from scorer_gui.ObjectSpace.dialog_controller import TrialDialogController
+from scorer_gui.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
 from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from scorer_gui.global_defs import TrialState
 
 
 def find_how_many_cameras():
@@ -20,41 +22,6 @@ def find_how_many_cameras():
             return i
         v.release()
     return 1
-
-
-class TrialDialogController(QtCore.QObject):
-    # TODO move to object space
-    dialog_done_signal = QtCore.pyqtSignal(name="TrialDialogController.dialog_done_signal")
-
-    def __init__(self, caller, locations, parent=None):
-        super(TrialDialogController, self).__init__(parent)
-        self.caller = caller
-        self.scheme = None
-        self.locations = locations
-        self.dialog = None
-        self.ok = False
-
-    def set_scheme(self, scheme):
-        self.scheme = scheme
-        if self.dialog:
-            self.dialog.set_values(scheme)
-
-    def get_values(self):
-        return self.dialog.get_values()
-
-    @QtCore.pyqtSlot()
-    def start_dialog(self):
-        from scorer_gui.obj_scorer import TrialDialog
-        self.dialog = TrialDialog(caller=self.caller, trial_params=self.scheme, locations=self.locations)
-        self.dialog.set_readonly(True)
-        self.ok = self.dialog.exec_()
-        self.dialog_done_signal.emit()
-
-    def exit_status(self):
-        return self.ok
-
-    def set_readonly(self, i):
-        self.dialog.set_readonly(i)
 
 
 # the camera model for the Camera acquisition
@@ -116,9 +83,7 @@ class DeviceManager(QtCore.QObject):
         self.start_time = self.get_absolute_time()
         self.frame_no = 0
 
-        self.trial_ongoing = False
-        self.trial_ready = False
-        self.trial_completed = False
+        self.trial_state = TrialState.IDLE
         self.capturing = False
         # noinspection PyArgumentList
         # print("init_thread: ", int(QtCore.QThread.currentThreadId()))
@@ -252,8 +217,7 @@ class DeviceManager(QtCore.QObject):
                 self.acquiring = True
                 if not self.capturing:
                     self.capturing = True
-            self.trial_ready = True
-            self.trial_completed = False
+            self.trial_state = TrialState.READY
 
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
@@ -407,48 +371,21 @@ class DeviceManager(QtCore.QObject):
             self.analyzer.close()
 
     def finalize_trial(self):
-        if self.trial_ready:
-            if not self.trial_completed:
+        if self.trial_state not in (TrialState.IDLE, TrialState.READY):
+            if self.trial_state == TrialState.ONGOING:
                 t = self.get_cur_time()
                 ts = t.seconds + 1.e-6 * t.microseconds
                 self.session.set_event(ts, self.frame_no, 'TR0')
-                self.trial_ongoing = False
-                self.trial_completed = True
-                self.obj_state['TR'] = False
+                self.trial_state = TrialState.COMPLETED
+                self.analyzer.process_message('TR0')
             self.close_files()
             self.analyze_trial()
             self.session.set_trial_finished()
-            self.trial_ready = False
+            self.trial_state = TrialState.IDLE
 
     # noinspection PyUnresolvedReferences
     def analyze_trial(self):
-        # noinspection PyUnresolvedReferences
-        import neuroseries as nts
-        lt = self.session.get_events_for_trial()
-        info = self.session.get_scheme_trial_info()
-        loc_1 = info['loc_1']
-        loc_2 = info['loc_2']
-
-        st = lt.iloc[0]['trial_time']
-        en = st + 300
-        trial_5_min = nts.IntervalSet(st, en, time_units='s')
-        locations = list(self.analyzer.rect_coord.keys())
-        explore_time = {}
-        explore_time_5 = {}
-        for l in locations:
-            st = lt.loc[(lt['type'] == l) & (lt['start_stop'])]['trial_time']
-            en = lt.loc[(lt['type'] == l) & (~(lt['start_stop'] == True))]['trial_time']
-            explore = nts.IntervalSet(st, en, time_units='s')
-            explore_time[l] = explore.tot_length(time_units='s')
-            explore_5 = trial_5_min.intersect(explore)
-            explore_time_5[l] = explore_5.tot_length(time_units='s')
-
-        extra_info = {'loc_1_time': explore_time[loc_1],
-                      'loc_2_time': explore_time[loc_2],
-                      'loc_1_time_5': explore_time_5[loc_1],
-                      'loc_2_time_5': explore_time_5[loc_2]}
-
-        self.session.update_results_with_extra_data(extra_info)
+        self.session.analyze_trial()
 
     @QtCore.pyqtSlot()
     def set_paused(self):
@@ -476,7 +413,7 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
 
-        if self.session and not self.trial_ready:
+        if self.session and self.trial_state == TrialState.IDLE:
             return
         if self.analyzer:
             self.analyzer.process_message(msg)
@@ -602,11 +539,9 @@ class CameraDeviceManager(DeviceManager):
                 frame = self.splash_screen
                 ret = True
                 if self.splash_screen_countdown == 1:
-                    self.trial_ready = True
-                    self.trial_completed = False
+                    self.trial_state = TrialState.READY
                 else:
-                    self.trial_ready = False
-                    self.trial_completed = True
+                    self.trial_state = TrialState.COMPLETED
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()
@@ -646,7 +581,7 @@ class CameraDeviceManager(DeviceManager):
 
     def get_cur_time(self):
         if self.session:
-            if not self.trial_ongoing:
+            if self.trial_state != TrialState.ONGOING:
                 return datetime.timedelta(0)
             else:
                 return datetime.datetime.now() - self.start_time

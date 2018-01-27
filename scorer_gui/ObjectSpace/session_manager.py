@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from pandas.core.common import PandasError
 
+from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+
 
 class SessionManager:
     required_columns = ('condition', 'group', 'session', 'subject', 'trial',)
@@ -196,6 +198,36 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         df_update.set_index('sequence_nr', inplace=True)
         # self.trials_results.loc[info['sequence_nr']] = np.NaN
         self.trials_results.update(df_update)
+
+    def analyze_trial(self):
+        # noinspection PyUnresolvedReferences
+        import neuroseries as nts
+        lt = self.get_events_for_trial()
+        info = self.get_scheme_trial_info()
+        loc_1 = info['loc_1']
+        loc_2 = info['loc_2']
+
+        st = lt.iloc[0]['trial_time']
+        en = st + 300
+        trial_5_min = nts.IntervalSet(st, en, time_units='s')
+        r_keys = ObjectSpaceFrameAnalyzer.rect_coord.keys()
+        locations = list(r_keys)
+        explore_time = {}
+        explore_time_5 = {}
+        for l in locations:
+            st = lt.loc[(lt['type'] == l) & (lt['start_stop'])]['trial_time']
+            en = lt.loc[(lt['type'] == l) & (~(lt['start_stop'] == True))]['trial_time']
+            explore = nts.IntervalSet(st, en, time_units='s')
+            explore_time[l] = explore.tot_length(time_units='s')
+            explore_5 = trial_5_min.intersect(explore)
+            explore_time_5[l] = explore_5.tot_length(time_units='s')
+
+        extra_info = {'loc_1_time': explore_time[loc_1],
+                      'loc_2_time': explore_time[loc_2],
+                      'loc_1_time_5': explore_time_5[loc_1],
+                      'loc_2_time_5': explore_time_5[loc_2]}
+
+        self.update_results_with_extra_data(extra_info)
 
     def add_trial(self):
         self.cur_trial += 1
