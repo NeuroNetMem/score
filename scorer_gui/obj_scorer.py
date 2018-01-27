@@ -2,11 +2,15 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
+import numpy as np
+import cv2
+
 # noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
-from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager, DeviceManager
+from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
+
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -373,15 +377,17 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     def keyPressEvent(self, event):
         if self.device:
-            if not event.isAutoRepeat() and event.key() in self.device.dir_keys:
-                msg = DeviceManager.dir_keys[event.key()] + '1'
+            keymap = self.device.key_interface()
+            if not event.isAutoRepeat() and event.key() in keymap:
+                msg = keymap[event.key()] + '1'
                 self.key_action.emit(msg)
         event.accept()
 
     def keyReleaseEvent(self, event):
         if self.device:
-            if not event.isAutoRepeat() and event.key() in self.device.dir_keys:
-                msg = DeviceManager.dir_keys[event.key()] + '0'
+            keymap = self.device.key_interface()
+            if not event.isAutoRepeat() and event.key() in keymap:
+                msg = keymap[event.key()] + '0'
                 self.key_action.emit(msg)
         event.accept()
 

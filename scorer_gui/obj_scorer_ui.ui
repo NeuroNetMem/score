@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>947</width>
+    <width>959</width>
     <height>850</height>
    </rect>
   </property>
@@ -28,19 +28,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="CameraWidget" name="cameraWidget">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>1280</width>
-        <height>720</height>
-       </size>
-      </property>
+     <widget class="CVVideoWidget" name="cameraWidget">
       <property name="toolTip">
        <string>Video Viewer for Behavioral Tracking</string>
       </property>
@@ -318,7 +306,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>947</width>
+     <width>959</width>
      <height>22</height>
     </rect>
    </property>
@@ -389,9 +377,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>CameraWidget</class>
+   <class>CVVideoWidget</class>
    <extends>QWidget</extends>
-   <header>scorer_gui.obj_scorer_model</header>
+   <header>scorer_gui.cv_video_widget</header>
   </customwidget>
  </customwidgets>
  <resources>
