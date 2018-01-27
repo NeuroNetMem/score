@@ -2,6 +2,7 @@ import cv2
 
 from PyQt5 import QtCore
 from scorer_gui.global_defs import TrialState
+from scorer_gui.tracking.tracker import Tracker
 
 
 class FrameAnalyzer:
@@ -33,6 +34,9 @@ class FrameAnalyzer:
     def close(self):
         if self.csv_out:
             self.csv_out.close()
+
+    def can_track(self):
+        return False
 
 
 class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
@@ -72,7 +76,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
             else:
                 self.device.trial_state = TrialState.COMPLETED
         else:
-            if self.device.session and  self.device.trial_state != TrialState.ONGOING:
+            if self.device.session and self.device.trial_state != TrialState.ONGOING:
                 return
             if msg[:-1] in self.rect_coord and msg[-1] == '1':
                 self.obj_state[msg[:-1]] = 1
@@ -94,3 +98,19 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
+
+
+class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
+    def __init__(self, device):
+        super(ObjectSpaceTrackingAnalyzer, self).__init__(device)
+        self.tracker = None
+
+    def can_track(self):
+        return True
+
+    def init_tracker(self, frame_size):
+        self.tracker = Tracker(frame_size)
+
+    def process_frame(self, frame):
+        super(ObjectSpaceTrackingAnalyzer, self).process_frame(frame)
+        self.tracker(frame)

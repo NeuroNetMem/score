@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets
 
 from scorer_gui.ObjectSpace.dialog_controller import TrialDialogController
 from scorer_gui.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
-from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer, ObjectSpaceTrackingAnalyzer
 from scorer_gui.global_defs import TrialState
 
 
@@ -64,7 +64,7 @@ class DeviceManager(QtCore.QObject):
             self.set_session(session_file)
         self.splash_screen = None
         self.splash_screen_countdown = 0
-        self.analyzer = ObjectSpaceFrameAnalyzer(self)  # TODO make this configurable
+        self.analyzer = ObjectSpaceTrackingAnalyzer(self)  # TODO make this configurable
         self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
@@ -80,8 +80,11 @@ class DeviceManager(QtCore.QObject):
         self.to_release = False
         self._device = None
         self._device = self.init_device()
+
+        self.analyzer.init_tracker(self.frame_size)
         self.start_time = self.get_absolute_time()
         self.frame_no = 0
+        self.last_frame = None
 
         self.trial_state = TrialState.IDLE
         self.capturing = False
@@ -456,8 +459,10 @@ class VideoDeviceManager(DeviceManager):
             return
         if not self.paused and self.acquiring:
             ret, frame = self._device.read()
+
             if ret:
                 self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
+                self.last_frame = frame
                 self.frame_pos_signal.emit(self.frame_no)
                 h, w, _ = frame.shape
                 if self.save_raw_video and self.raw_out and self.acquiring:
