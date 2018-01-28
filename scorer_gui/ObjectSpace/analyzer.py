@@ -38,6 +38,15 @@ class FrameAnalyzer:
     def can_track(self):
         return False
 
+    def start_animal_init(self, x, y):
+        pass
+
+    def update_animal_init(self, x, y):
+        pass
+
+    def complete_animal_init(self, x, y):
+        pass
+
 
 class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
     dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_7: 'UL',
@@ -104,6 +113,10 @@ class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
     def __init__(self, device):
         super(ObjectSpaceTrackingAnalyzer, self).__init__(device)
         self.tracker = None
+        self.animal_start_x = -1
+        self.animal_start_y = -1
+        self.animal_end_x = -1
+        self.animal_end_y = -1
 
     def can_track(self):
         return True
@@ -111,6 +124,30 @@ class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
     def init_tracker(self, frame_size):
         self.tracker = Tracker(frame_size)
 
+    def set_background(self, frame):
+        print(frame)
+        self.tracker.set_background(frame)
+
     def process_frame(self, frame):
         super(ObjectSpaceTrackingAnalyzer, self).process_frame(frame)
-        self.tracker(frame)
+        self.tracker.track(frame)
+        if self.animal_start_x != -1:
+            yellow = (255, 255, 0)
+            cv2.line(frame, (self.animal_start_x, self.animal_start_y),
+                     (self.animal_end_x, self.animal_end_y), yellow, 2)
+
+    def start_animal_init(self, x, y):
+        self.animal_start_x = x
+        self.animal_start_y = y
+
+    def update_animal_init(self, x, y):
+        self.animal_end_x = x
+        self.animal_end_y = y
+
+    def complete_animal_init(self, x, y):
+        self.animal_end_x = x
+        self.animal_end_y = y
+        self.tracker.add_animal(self.animal_start_x, self.animal_start_y,
+                                self.animal_end_x, self.animal_end_y)
+        self.animal_start_x = -1
+        self.animal_start_y = -1

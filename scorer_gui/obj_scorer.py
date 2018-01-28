@@ -2,15 +2,11 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
-import numpy as np
-import cv2
-
 # noinspection PyUnresolvedReferences
 import scorer_gui.obj_rc
 from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
-
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -184,6 +180,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
             self.device.error_signal.connect(self.error_and_close)
+            self.ui.cameraWidget.mouse_press_action_signal.connect(self.device.mouse_press_action)
+            self.ui.cameraWidget.mouse_move_action_signal.connect(self.device.mouse_move_action)
+            self.ui.cameraWidget.mouse_release_action_signal.connect(self.device.mouse_release_action)
+
         self.ui.cameraWidget.set_device(self.device)
 
     @QtCore.pyqtSlot(bool)
@@ -200,6 +200,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def video_size_changed(self):
+        print("video size changed")
         self.updateGeometry()
 
     @QtCore.pyqtSlot()

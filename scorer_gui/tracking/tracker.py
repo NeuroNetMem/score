@@ -358,19 +358,23 @@ class Animal:
             ac = animal_center
             mh = mask_half
 
-            product = np.multiply(mask, matrix[int(ac.y - mh): int(ac.y + mh), int(ac.x - mh):int(ac.x + mh)])
+            try:
+                product = np.multiply(mask, matrix[int(ac.y - mh): int(ac.y + mh), int(ac.x - mh):int(ac.x + mh)])
 
-            val = product.sum()
+                val = product.sum()
 
-            # self.host.logger.log("val: " + str(val))
+                # self.host.logger.log("val: " + str(val))
 
-            if first:
-                current_val = val
-                first = False
+                if first:
+                    current_val = val
+                    first = False
 
-            if val > best_val:
-                best_posture = p
-                best_val = val
+                if val > best_val:
+                    best_posture = p
+                    best_val = val
+            except ValueError:
+                current_val = -1.
+                print("tracking fault")
 
         if best_val > current_val * 1.:
 
@@ -394,8 +398,6 @@ class Animal:
         rows, cols = raw_matrix.shape[:2]
 
         total_postures = len(postures)
-
-        self.host.logger.log("total postures: " + str(total_postures))
 
         c = 0
         dc = 1
@@ -512,8 +514,7 @@ class Tracker:
         frame = cv2.resize(frame, (int(cols), int(rows)))
         return frame
 
-    @staticmethod
-    def calculate_background(self, frame):
+    def set_background(self, frame):
         """calculate background from the frames before the video stream ends, by averaging """
         bg = frame.astype(np.uint8)
         self.background = bg

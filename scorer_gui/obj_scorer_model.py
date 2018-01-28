@@ -88,6 +88,12 @@ class DeviceManager(QtCore.QObject):
 
         self.trial_state = TrialState.IDLE
         self.capturing = False
+
+        self.track_start_x = -1
+        self.track_start_y = -1
+        self.track_end_x = 0
+        self.track_end_y = 0
+
         # noinspection PyArgumentList
         # print("init_thread: ", int(QtCore.QThread.currentThreadId()))
 
@@ -260,6 +266,36 @@ class DeviceManager(QtCore.QObject):
     def yes_no_answer(self, i):
         self.yes_no_answer_signal.emit(i)
         self.yes_no = i
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_press_action(self, x, y):
+        self.track_start_x = x
+        self.track_start_y = y
+        self.analyzer.start_animal_init(x, y)
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_move_action(self, x, y):
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.analyzer.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.analyzer.update_animal_init(x, y)
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_release_action(self, x, y):
+        if self.track_start_x == -1:
+            return
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.analyzer.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.analyzer.complete_animal_init(x, y)
 
     def open_files(self):
         import os
@@ -471,6 +507,8 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
+                if self.frame_no == 97:  # FIXME bad hack just for testing purposes, remove ASAP!
+                    self.analyzer.set_background(frame)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()

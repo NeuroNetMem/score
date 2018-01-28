@@ -24,6 +24,9 @@ class OpenCVQImage(QtGui.QImage):
 class CVVideoWidget(QtWidgets.QWidget):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraWidget.new_frame")
     key_action = QtCore.pyqtSignal(str, name="CameraWidget.key_action")
+    mouse_press_action_signal = QtCore.pyqtSignal(int, int, name="CameraWidget.mouse_press_action_signal")
+    mouse_move_action_signal = QtCore.pyqtSignal(int, int, name="CameraWidget.mouse_move_action_signal")
+    mouse_release_action_signal = QtCore.pyqtSignal(int, int, name="CameraWidget.mouse_release_action_signal")
 
     def __init__(self, parent=None, flags=None):
         if flags:
@@ -94,3 +97,16 @@ class CVVideoWidget(QtWidgets.QWidget):
             msg = keymap[event.key()] + '0'
             self.key_action.emit(msg)
         event.accept()
+
+    def mousePressEvent(self, a0: QtGui.QMouseEvent):
+        self.mouse_press_action_signal.emit(a0.x(), a0.y())
+
+    def mouseMoveEvent(self, a0: QtGui.QMouseEvent):
+        if self.rect().contains(a0.pos()):
+            self.mouse_move_action_signal.emit(a0.x(), a0.y())
+        else:
+            # code -1, -1 emitted when the mouse is dragged outside of the widget
+            self.mouse_move_action_signal.emit(-1, -1)
+
+    def mouseReleaseEvent(self, a0: QtGui.QMouseEvent):
+        self.mouse_release_action_signal.emit(a0.x(), a0.y())
