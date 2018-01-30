@@ -8,6 +8,8 @@ from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager
 from scorer_gui.obj_scorer_ui import Ui_MainWindow
 from scorer_gui.trial_dialog_ui import Ui_TrialDialog
 
+import logging
+
 
 class TrialDialog(QtWidgets.QDialog):
     def __init__(self, caller=None, trial_params=None, locations=None):
@@ -425,4 +427,5 @@ def _main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='scorer_log.log', level=logging.DEBUG)
     _main()

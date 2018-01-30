@@ -10,7 +10,8 @@ import math
 #
 # from geometry import *
 import scorer_gui.geometry as geometry
-
+import logging
+logger = logging.getLogger(__name__)
 
 class AnimalPosition:
     def __init__(self):
@@ -281,14 +282,15 @@ class Animal:
         """tracking a single animal"""
         # source is the original frame, raw_matrix the subtracted one
 
-        debug = [("rm", raw_matrix)]
+        debug = None
+        # debug = [("rm", raw_matrix)]
         # find a threshold for the subtracted image using the Otsu's method
         thr, thresh_matrix = cv2.threshold(raw_matrix, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # thr, foo = cv2.threshold(raw_matrix, 50, 255, cv2.THRESH_BINARY)
         # thr = 50
 
-        debug.append(("otsu", thresh_matrix))
+        # debug.append(("otsu", thresh_matrix))
         # self.host.logger.log("threshold: " + str(thr))
 
         matrix = raw_matrix.astype(np.float)
@@ -356,25 +358,41 @@ class Animal:
             cv2.circle(mask, b.as_int_tuple(), br, 1, -1)
 
             ac = animal_center
-            mh = mask_half
+            mh = int(mask_half)
 
             try:
-                product = np.multiply(mask, matrix[int(ac.y - mh): int(ac.y + mh), int(ac.x - mh):int(ac.x + mh)])
+                matrix_slice = matrix[max((int(ac.y) - mh), 0): int(ac.y) + mh, max(int(ac.x) - mh, 0):int(ac.x) + mh]
+                mask_start_r = 0
+                mask_start_c = 0
+                mask_end_r = mask.shape[0]
+                mask_end_c = mask.shape[1]
+                if int(ac.y) - mh < 0:
+                    mask_start_r = -(int(ac.y) - mh)
+                if int(ac.x) - mh < 0:
+                    mask_start_c = -(int(ac.x) - mh)
+                if int(ac.y) + mh > matrix.shape[0]:
+                    mask_end_r -= int(ac.y) + mh - matrix.shape[0]
+                if int(ac.x) + mh > matrix.shape[1]:
+                    mask_end_c -= int(ac.x) + mh - matrix.shape[1]
+                mask_slice = mask[mask_start_r:mask_end_r, mask_start_c:mask_end_c]
+
+                product = np.multiply(mask_slice, matrix_slice)
+                #product = np.multiply(mask, matrix[(int(ac.y) - mh): int(ac.y) + mh, int(ac.x) - mh:int(ac.x) + mh])
 
                 val = product.sum()
-
-                # self.host.logger.log("val: " + str(val))
-
-                if first:
-                    current_val = val
-                    first = False
-
-                if val > best_val:
-                    best_posture = p
-                    best_val = val
             except ValueError:
-                current_val = -1.
-                print("tracking fault")
+                logger.exception('tracker fault')
+                logger.info("ac = ({}, {}), mh = {}".format(ac.x, ac.y, mh))
+                logger.info(("matrix size = {}, {}".format(matrix.shape[0], matrix.shape[1])))
+                val = 0
+                raise ValueError('EXIT!!!')  # TODO remove once bug fixed
+            if first:
+                current_val = val
+                first = False
+
+            if val > best_val:
+                best_posture = p
+                best_val = val
 
         if best_val > current_val * 1.:
 
@@ -397,48 +415,48 @@ class Animal:
 
         rows, cols = raw_matrix.shape[:2]
 
-        total_postures = len(postures)
-
-        c = 0
-        dc = 1
-        cell_size = 40
-
-        while c < min(total_postures, 10):
-
-            debug_postures = np.zeros((rows, cols), np.uint8)
-
-            for y in range(0, 5):
-                done = False
-                for x in range(0, 7):
-                    if c == total_postures:
-                        done = True
-                        break
-
-                    white = (255, 255, 255)
-                    gray = (155, 155, 155)
-
-                    p = postures[c]
-
-                    cell_center = geometry.Point(x * cell_size + cell_size / 2, y * cell_size + cell_size / 2)
-                    animal_center = self.back
-
-                    cv2.rectangle(debug_postures, (x * cell_size, y * cell_size),
-                                  (x * cell_size + cell_size, y * cell_size + cell_size), gray)
-
-                    cv2.circle(debug_postures, p.head.diff(animal_center).add(cell_center).as_int_tuple(),
-                               self.scaled_head_radius, white)
-                    cv2.circle(debug_postures, p.front.diff(animal_center).add(cell_center).as_int_tuple(),
-                               self.scaled_front_radius, white)
-                    cv2.circle(debug_postures, p.back.diff(animal_center).add(cell_center).as_int_tuple(),
-                               self.scaled_back_radius, white)
-
-                    c += 1
-
-                if done:
-                    break
-
-            debug.append(("postures " + str(dc), debug_postures))
-            dc = dc + 1
+        # total_postures = len(postures)
+        #
+        # c = 0
+        # dc = 1
+        # cell_size = 40
+        #
+        # while c < min(total_postures, 10):
+        #
+        #     debug_postures = np.zeros((rows, cols), np.uint8)
+        #
+        #     for y in range(0, 5):
+        #         done = False
+        #         for x in range(0, 7):
+        #             if c == total_postures:
+        #                 done = True
+        #                 break
+        #
+        #             white = (255, 255, 255)
+        #             gray = (155, 155, 155)
+        #
+        #             p = postures[c]
+        #
+        #             cell_center = geometry.Point(x * cell_size + cell_size / 2, y * cell_size + cell_size / 2)
+        #             animal_center = self.back
+        #
+        #             cv2.rectangle(debug_postures, (x * cell_size, y * cell_size),
+        #                           (x * cell_size + cell_size, y * cell_size + cell_size), gray)
+        #
+        #             cv2.circle(debug_postures, p.head.diff(animal_center).add(cell_center).as_int_tuple(),
+        #                        self.scaled_head_radius, white)
+        #             cv2.circle(debug_postures, p.front.diff(animal_center).add(cell_center).as_int_tuple(),
+        #                        self.scaled_front_radius, white)
+        #             cv2.circle(debug_postures, p.back.diff(animal_center).add(cell_center).as_int_tuple(),
+        #                        self.scaled_back_radius, white)
+        #
+        #             c += 1
+        #
+        #         if done:
+        #             break
+        #
+        #     debug.append(("postures " + str(dc), debug_postures))
+        #     dc = dc + 1
 
         return debug
 
@@ -545,7 +563,7 @@ class Tracker:
 
         for a, w in zip(self.animals, weights):
             debug1 = a.track(source, matrix, w, self.animals, frame_time)
-            debug = debug + debug1
+            # debug = debug + debug1
 
         return debug
 
@@ -554,7 +572,7 @@ class Tracker:
 
         if self.background is None:
             return
-        debug = []
+        debug = None
 
         frame_gr = cv2.absdiff(frame, self.background)  # take the absolute difference
         frame_gr = cv2.cvtColor(frame_gr, cv2.COLOR_BGR2GRAY)  # convert to grayscale
@@ -570,14 +588,14 @@ class Tracker:
 
         # cv2.normalize(frame_gr, frame_gr, 0, 255, cv2.NORM_MINMAX)
 
-        debug.append(("source", frame_gr))
+        # debug.append(("source", frame_gr))
 
         # frame_gr_resized1 = filters.gaussian_filter(frame_gr, 8)
         # cv2.normalize(frame_gr_resized1, frame_gr_resized1, 0, 255, cv2.NORM_MINMAX)
 
         frame_gr_resized1 = frame_gr
 
-        debug.append(("smoothed", frame_gr_resized1))
+        # debug.append(("smoothed", frame_gr_resized1))
 
         frame_gr_resized = self.resize(frame_gr_resized1)  # resize to the skeletonized size and go to 8-bit integers
         frame_gr_resized = frame_gr_resized.astype(np.uint8)
@@ -594,7 +612,7 @@ class Tracker:
         # track animals
         debug1 = self.track_animals(frame, frame_gr, frame_gr_resized, frame_time)
 
-        debug = debug + debug1
+        # debug = debug + debug1
 
         positions = self.get_animal_positions()
 
@@ -623,8 +641,8 @@ class Tracker:
 
             white = (255, 255, 255)
             green = (0, 255, 0)
-            red = (255, 0, 0)
-            yellow = (255, 255, 0)
+            # red = (255, 0, 0)
+            # yellow = (255, 255, 0)
 
             a = ap[0]
             p = ap[1]
@@ -651,7 +669,7 @@ class Tracker:
                 bc = self.project(p.back)
 
                 hr = self.scaled_radius(a.head_radius)
-                fr = self.scaled_radius(a.front_radius)
+                # fr = self.scaled_radius(a.front_radius)
                 br = self.scaled_radius(a.back_radius)
 
                 fhd = geometry.distance(fc.x, fc.y, hc.x, hc.y)

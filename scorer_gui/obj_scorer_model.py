@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import time
 import datetime
+import warnings
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -62,6 +63,8 @@ class DeviceManager(QtCore.QObject):
         self.session = None
         if session_file:
             self.set_session(session_file)
+        else:
+            self.can_acquire = True
         self.splash_screen = None
         self.splash_screen_countdown = 0
         self.analyzer = ObjectSpaceTrackingAnalyzer(self)  # TODO make this configurable
@@ -295,7 +298,7 @@ class DeviceManager(QtCore.QObject):
         else:
             self.track_end_x = x
             self.track_end_y = y
-            self.analyzer.complete_animal_init(x, y)
+            self.analyzer.complete_animal_init(x, y, frame_no=self.frame_no)
 
     def open_files(self):
         import os
@@ -491,6 +494,8 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
+        # print("starts querying")
+        # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
         if not self.capturing:
             return
         if not self.paused and self.acquiring:
@@ -508,14 +513,15 @@ class VideoDeviceManager(DeviceManager):
                 if self.out and self.acquiring:
                     self.out.write(frame)
                 if self.frame_no == 97:  # FIXME bad hack just for testing purposes, remove ASAP!
-                    self.analyzer.set_background(frame)
+                    self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()
                 self.paused = True
+
         if self.to_release:
             self.release()
-
+        # print("queried frame {}".format(self.frame_no))
     @property
     def frame_size(self):
         w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -552,6 +558,28 @@ class VideoDeviceManager(DeviceManager):
             warnings.warn(str(e))
             self.can_acquire = False
 
+    def move_to_frame(self, frame_no):
+        if frame_no < self.frame_no:
+            warnings.warn("can't skip to earlier frame")
+        f = self._device.get(cv2.CAP_PROP_POS_FRAMES)
+        while self._device.get(cv2.CAP_PROP_POS_FRAMES) < frame_no:
+            self._device.read()
+        self.frame_no = frame_no
+
+    def acquire_background(self, frame_no=None):
+        if frame_no is not None:
+            self.move_to_frame(frame_no)
+        ret, frame = self._device.read()
+        if ret:
+            self.analyzer.set_background(frame, self.frame_no)
+        else:
+            raise RuntimeError("Can't read frame!")
+
+    def add_animal(self, start, end, frame_no=None):
+        if frame_no is not None:
+            self.move_to_frame(frame_no)
+        self.analyzer.start_animal_init(start[0], start[1])
+        self.analyzer.complete_animal_init(end[0], end[1], self.frame_no)
 
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30

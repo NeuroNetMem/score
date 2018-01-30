@@ -6,11 +6,17 @@ TODO
 - get the video to work as well as the camera 
     X stop raw video save for video in
     X get the correct times when scoring video in
-- separate experiment logic from manager
+X separate experiment logic from manager
 - add object manager
 - add the tracking
-    - make new class that gets the opencv video capture object
-    - make configuration utility
-    - deal with threads
+    - add logger
+    - make interface for adding/removing animals, background
+    - debug crash
+    - make simplified profiling interface/profile
+    - optimize with numba/cython
+
 - add automatic scoring/handling
+
+- solve start from next trial crash, other corner cases
+
     

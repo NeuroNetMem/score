@@ -4,6 +4,9 @@ from PyQt5 import QtCore
 from scorer_gui.global_defs import TrialState
 from scorer_gui.tracking.tracker import Tracker
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class FrameAnalyzer:
     def __init__(self, device):
@@ -44,7 +47,7 @@ class FrameAnalyzer:
     def update_animal_init(self, x, y):
         pass
 
-    def complete_animal_init(self, x, y):
+    def complete_animal_init(self, x, y, frame_no=0):
         pass
 
 
@@ -124,8 +127,9 @@ class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
     def init_tracker(self, frame_size):
         self.tracker = Tracker(frame_size)
 
-    def set_background(self, frame):
-        print(frame)
+    def set_background(self, frame, frame_no=0):
+        log_msg = "Setting background starting at frame {}.".format(frame_no)
+        logger.info(log_msg)
         self.tracker.set_background(frame)
 
     def process_frame(self, frame):
@@ -144,7 +148,10 @@ class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
         self.animal_end_x = x
         self.animal_end_y = y
 
-    def complete_animal_init(self, x, y):
+    def complete_animal_init(self, x, y, frame_no=0):
+        log_msg = "initializing animal at start ({}, {}), end ({}, {}) at frame {}".format(
+            self.animal_start_x, self.animal_start_y, x, y, frame_no)
+        logger.info(log_msg)
         self.animal_end_x = x
         self.animal_end_y = y
         self.tracker.add_animal(self.animal_start_x, self.animal_start_y,
