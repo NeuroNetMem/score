@@ -512,8 +512,8 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                if self.frame_no == 97:  # FIXME bad hack just for testing purposes, remove ASAP!
-                    self.analyzer.set_background(frame, frame_no=self.frame_no)
+                # if self.frame_no == 97:  #  bad hack just for testing purposes, remove ASAP!
+                #     self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()

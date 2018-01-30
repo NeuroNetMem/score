@@ -385,7 +385,6 @@ class Animal:
                 logger.info("ac = ({}, {}), mh = {}".format(ac.x, ac.y, mh))
                 logger.info(("matrix size = {}, {}".format(matrix.shape[0], matrix.shape[1])))
                 val = 0
-                raise ValueError('EXIT!!!')  # TODO remove once bug fixed
             if first:
                 current_val = val
                 first = False
