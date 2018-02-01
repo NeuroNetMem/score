@@ -53,7 +53,7 @@ class Animal:
         """move the entire animal of the same amount """
         result = []
         # distances = [2, 4, 6, 8, 10, 14, 18, 22]
-        distances = np.arange(-40, 41, 2)
+        distances = np.arange(-10, 11, 1)
         for p in postures:
             for d in distances:
                 moved = geometry.point_along_a_line_p(p.back, p.front, d)
@@ -65,7 +65,7 @@ class Animal:
         """move only the head and the front?"""
         result = []
         # distances = [-4, -2, 2, 4, 6, 8, 10]
-        distances = np.arange(-15, 16, 2)
+        distances = np.arange(-5, 6, 1)
         min_dist = self.scaled_back_radius - self.scaled_front_radius
         max_dist = self.scaled_back_radius + self.scaled_front_radius
         for p in postures:
@@ -83,7 +83,7 @@ class Animal:
     def move_head(self, postures):
         """move only the head"""
         result = []
-        distances = np.arange(-10, 11, 2)
+        distances = np.arange(-5, 6, 1)
         min_dist = self.scaled_front_radius - self.scaled_head_radius
         max_dist = self.scaled_front_radius + self.scaled_head_radius
         for p in postures:
@@ -101,7 +101,7 @@ class Animal:
         """rotate the front and the head"""
         result = []
         #angles = [-20, -10, 10, 20]
-        angles = np.arange(-50, 51, 10)
+        angles = np.arange(-10, 11, 2)
         for p in postures:
             for a in angles:
                 ar = a * (math.pi / 180)
@@ -114,7 +114,7 @@ class Animal:
         """rotate only the head"""
         result = []
         # angles = [-20, -10, 10, 20]
-        angles = np.arange(-50, 51, 10)
+        angles = np.arange(-10, 11, 2)
         for p in postures:
             for a in angles:
                 ar = a * (math.pi / 180)
@@ -131,7 +131,7 @@ class Animal:
     def move_back_contracted(self, postures):
         result = []
         # distances = [-1, 2, 4, 6, 8, 10, 20, 30]
-        distances = np.arange(-20, 21, 2)
+        distances = np.arange(-10, 11, 1)
         for p in postures:
             for d in distances:
                 moved = geometry.point_along_a_line_p(p.back, p.head, d)
@@ -142,7 +142,7 @@ class Animal:
     def move_head_contracted(self, postures):
         result = []
         # distances = [-2, 2]
-        distances = np.arange(-10, 11, 2)
+        distances = np.arange(-5, 6, 1)
         min_dist = self.scaled_back_radius - self.scaled_head_radius
         max_dist = self.scaled_back_radius + self.scaled_head_radius
         for p in postures:
@@ -190,7 +190,9 @@ class Animal:
     def generate_postures(self):
         """enumerates the possible postures"""
 
-        postures = [self.Posture(self.head, self.front, self.back, self.contracted)]
+        disp = geometry.point_diff(self.centroid, self.prev_centroid)
+        postures = [self.Posture(geometry.point_move(self.head, disp), geometry.point_move(self.front, disp),
+                                 geometry.point_move(self.back, disp), self.contracted)]
         postures0 = postures[:]
 
         if not self.contracted:
@@ -224,13 +226,25 @@ class Animal:
 
         return postures
 
+    def find_closest_centroid(self, c):
+        if c.ndim == 1:
+            return tuple(c)
+        dist2 = np.sum((c - np.array(self.centroid))**2, axis=1)
+        closest_idx = np.argmin(dist2)
+        return tuple(c[closest_idx, :])
+
     # noinspection PyShadowingBuiltins
-    def __init__(self, host, id, start_x, start_y, end_x, end_y, config=Configuration()):
+    def __init__(self, host, id, start_x, start_y, end_x, end_y, centroids, config=Configuration()):
 
         self.host = host  # the calling tracker object
         self.id = id  # a id number for the animal
         self.config = config
-
+        self.centroid = None
+        self.centroid = ((start_x + end_x) / 2, (start_y + end_y) / 2)
+        if centroids:
+            self.centroid = self.find_closest_centroid(centroids)
+        self.prev_centroid = self.centroid
+        logger.debug("setting centroid at {}, {}".format(self.centroid[0], self.centroid[1]))
         self.scaled_max_body_length = config.max_body_length * self.host.scale_factor
         self.scaled_max_width = self.config.max_body_width * self.host.scale_factor
         self.scaled_min_width = self.config.min_body_width * self.host.scale_factor
@@ -246,8 +260,8 @@ class Animal:
         start = geometry.Point(start_x, start_y)
         end = geometry.Point(end_x, end_y)
 
-        self.scaled_head_radius = 7
-        self.scaled_front_radius = 9
+        self.scaled_head_radius = 5
+        self.scaled_front_radius = 7
         self.scaled_back_radius = 10
 
         head_radius = self.scaled_head_radius / host.scale_factor
@@ -286,11 +300,15 @@ class Animal:
 
     # noinspection PyUnusedLocal
     # @profile
-    def track(self, raw_matrix, animals, frame_time):
+    def track(self, raw_matrix, animals, centroids, frame_time):
         """tracking a single animal"""
         # source is the original frame, raw_matrix the subtracted one
 
         debug = None
+        self.prev_centroid = self.centroid
+        logger.debug("centroids are " + str(centroids))
+        self.centroid = self.find_closest_centroid(centroids)
+
         # debug = [("rm", raw_matrix)]
         # find a threshold for the subtracted image using the Otsu's method
         # thr, thresh_matrix = cv2.threshold(raw_matrix, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -506,6 +524,7 @@ class Tracker:
         config.skeletonization_res_height = frame_height
         config.skeletonization_res_width = frame_width
         self.config = config
+        self.centroids = None
         self.scale_factor = self.calculate_scale_factor(frame_width, frame_height)
         config.pixels_to_meters = float(config.scale) / frame_width
         config.max_animal_velocity = 1  # m/s
@@ -552,7 +571,7 @@ class Tracker:
     def add_animal(self, start_x, start_y, end_x, end_y, config=Animal.Configuration()):
         """add an animal to the list of animals"""
         logger.debug("Adding animal")
-        self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, config))
+        self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, self.centroids, config))
         return self.animals[-1]
 
     def delete_all_animals(self):
@@ -578,7 +597,7 @@ class Tracker:
         #     # debug = debug + debug1
 
         for a in self.animals:
-            debug1 = a.track(matrix, self.animals, frame_time)
+            debug1 = a.track(matrix, self.animals, self.centroids, frame_time)
 
         return debug
 
@@ -634,8 +653,9 @@ class Tracker:
         max_comp = np.argmax(sizes)
         frame_gr_resized = np.zeros(frame_gr.shape, np.uint8)
         frame_gr_resized[output==max_comp+1] = 255
-        animal_centroid = centroids[max_comp+1, :]
-
+        self.centroids = centroids[max_comp+1, :]
+        if self.centroids.ndim == 1:
+            self.centroids = self.centroids[np.newaxis, :]
         frame_mask = frame_gr_resized.copy()
         frame_mask = cv2.normalize(frame_gr_resized, frame_mask, 0, 1, cv2.NORM_MINMAX)
         frame_gr_resized = cv2.multiply(frame_mask, frame_gr1)
@@ -667,7 +687,8 @@ class Tracker:
         #
         # frame_display = cv2.add(foreground, background)
         frame[:] = frame_display
-        cv2.circle(frame, tuple(animal_centroid.astype(np.uint16)), 2, (0, 255, 0))
+        for ix in range(self.centroids.shape[0]):
+            cv2.circle(frame, tuple(self.centroids[ix,:].astype(np.uint16)), 2, (0, 255, 0))
         self.draw_animals(frame)
         return tracking_flow_element
 

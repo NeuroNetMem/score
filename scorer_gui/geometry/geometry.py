@@ -211,3 +211,24 @@ def rotate_p(point, pivot, angle):
     x = p.x * c - p.y * s + pivot.x
     y = p.x * s + p.y * c + pivot.y
     return Point(x, y)
+
+
+def point_move(point, disp):
+    if type(point) is Point:
+        x = point.x
+        y = point.y
+    else:
+        x, y = point
+
+    if type(disp) is Point:
+        dx = disp.x
+        dy = disp.y
+    else:
+        dx, dy = disp
+    return Point(x + dx, y + dy)
+
+
+def point_diff(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    return Point(x1 - x2, y1 - y2)
