@@ -37,8 +37,8 @@ class CVVideoWidget(QtWidgets.QWidget):
         super(CVVideoWidget, self).__init__(parent, flags=flags_)
         self._camera_device = None
         self._frame = None
-        self.setMinimumSize(640, 360)
-        self.setMaximumSize(640, 360)
+        self.setMinimumSize(640, 480)
+        self.setMaximumSize(640, 480)
 
     def set_device(self, camera_device):
         if camera_device:

@@ -10,7 +10,7 @@ from PyQt5 import QtWidgets
 
 from scorer_gui.ObjectSpace.dialog_controller import TrialDialogController
 from scorer_gui.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
-from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer, ObjectSpaceTrackingAnalyzer
+from scorer_gui.ObjectSpace.analyzer import ObjectSpaceTrackingAnalyzer
 from scorer_gui.global_defs import TrialState
 
 
@@ -118,7 +118,8 @@ class DeviceManager(QtCore.QObject):
         # self._device = self.init_device()
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
-        self._timer.setInterval(self.interval)
+        self._timer.setInterval(self.interval)  # TODO restore normal timer
+        # self._timer.setInterval(500)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
         self._timer.start()
@@ -494,6 +495,10 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
+    #     import cProfile  # FIXME this is for profiling only
+    #     cProfile.runctx("self.query_frame_()", globals(), locals(), filename='profile.stat')
+    #
+    # def query_frame_(self):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
         if not self.capturing:
@@ -512,8 +517,8 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                # if self.frame_no == 97:  #  bad hack just for testing purposes, remove ASAP!
-                #     self.analyzer.set_background(frame, frame_no=self.frame_no)
+                if self.frame_no == 97:  #  FIXME bad hack just for testing purposes, remove ASAP!
+                    self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()
@@ -600,7 +605,7 @@ class CameraDeviceManager(DeviceManager):
         return cd
 
     @QtCore.pyqtSlot()
-    def query_frame(self):
+    def query_frame_(self):
         if self.to_release:
             self.release()
         if not self.capturing:
