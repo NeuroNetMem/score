@@ -1,37 +1,48 @@
 import math
+import numpy as np
 
 
-class Point:
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
+class Point(np.ndarray):
+
+    def __new__(cls, x, y=0, dtype=float):
+        obj = super(Point, cls).__new__(cls, shape=(2,), dtype=dtype,
+                                        buffer=None, offset=0, strides=None,
+                                        order=None)
+        if type(x) is np.ndarray:
+            obj[:] = x
+        else:
+            obj[0] = x
+            obj[1] = y
+        return obj
+
+    @property
+    def x(self):
+        return self[0]
+
+    @x.setter
+    def x(self, val):
+        self[0] = val
+
+    @property
+    def y(self):
+        return self[1]
+
+    @y.setter
+    def y(self, val):
+        self[1] = val
 
     @staticmethod
     def from_tuple(t):
         return Point(t[0], t[1])
 
-    def copy(self):
-        return Point(self.x, self.y)
-
-    def clone(self):
-        return self.copy()
-
     def as_int_tuple(self):
         return int(self.x), int(self.y)
 
     def add(self, p):
-        self.x += p.x
-        self.y += p.y
+        self[0] += p
+        self[1] += p
+
         return self
-
-    def sum(self, p):
-        return Point(self.x + p.x, self.y + p.y)
-
-    def difference(self, p):
-        return Point(self.x - p.x, self.y - p.y)
-
-    def diff(self, p):
-        return self.difference(p)
 
     def scaled(self, factor, shift=0):
         return Point(self.x * factor + shift, self.y * factor + shift)
@@ -200,35 +211,13 @@ def angle(x1, y1, pivot_x, pivot_y, x2, y2):
         return 0
     return math.atan2(det, dot)
 
-# anticlockwise (clockwise if inverted y)
 
 
 # noinspection PyShadowingNames
 def rotate_p(point, pivot, angle):
     s = math.sin(angle)
     c = math.cos(angle)
-    p = point.difference(pivot)
+    p = point - pivot
     x = p.x * c - p.y * s + pivot.x
     y = p.x * s + p.y * c + pivot.y
     return Point(x, y)
-
-
-def point_move(point, disp):
-    if type(point) is Point:
-        x = point.x
-        y = point.y
-    else:
-        x, y = point
-
-    if type(disp) is Point:
-        dx = disp.x
-        dy = disp.y
-    else:
-        dx, dy = disp
-    return Point(x + dx, y + dy)
-
-
-def point_diff(p1, p2):
-    x1, y1 = p1
-    x2, y2 = p2
-    return Point(x1 - x2, y1 - y2)

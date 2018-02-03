@@ -427,5 +427,5 @@ def _main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='scorer_log.log', level=logging.DEBUG, filemode='w')
+    logging.basicConfig(filename='scorer_log.log', level=logging.INFO, filemode='w')
     _main()

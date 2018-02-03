@@ -44,8 +44,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
 
 # Distribution / packaging
 .Python
@@ -134,3 +132,7 @@ ENV/
 
 scratch/
 /scorer_gui/resources/objects/
+
+# Profile
+*.stat
+*.lprof

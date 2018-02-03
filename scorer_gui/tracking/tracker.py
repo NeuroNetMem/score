@@ -10,6 +10,7 @@ import math
 # from geometry import *
 import scorer_gui.geometry as geometry
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +49,7 @@ class Animal:
             self.back = back
             self.contracted = contracted
 
-# the primitives for animal motion, essentially the dynamics model of the animal
+    # the primitives for animal motion, essentially the dynamics model of the animal
     def move_back(self, postures):
         """move the entire animal of the same amount """
         result = []
@@ -57,8 +58,8 @@ class Animal:
         for p in postures:
             for d in distances:
                 moved = geometry.point_along_a_line_p(p.back, p.front, d)
-                delta = moved.difference(p.back)
-                result.append(self.Posture(p.head.sum(delta), p.front.sum(delta), moved))
+                delta = moved - p.back
+                result.append(self.Posture(p.head + delta, p.front + delta, moved))
         return result
 
     def move_front(self, postures):
@@ -76,8 +77,8 @@ class Animal:
                 if cd + d > max_dist:
                     continue
                 moved = geometry.point_along_a_line_p(p.back, p.front, cd + d)
-                delta = moved.difference(p.front)
-                result.append(self.Posture(p.head.sum(delta), moved, p.back))
+                delta = moved - p.front
+                result.append(self.Posture(p.head +delta, moved, p.back))
         return result
 
     def move_head(self, postures):
@@ -100,8 +101,7 @@ class Animal:
     def rotate_front(self, postures):
         """rotate the front and the head"""
         result = []
-        #angles = [-20, -10, 10, 20]
-        angles = np.arange(-10, 11, 2)
+        angles = np.arange(-20, 21, 4)
         for p in postures:
             for a in angles:
                 ar = a * (math.pi / 180)
@@ -114,7 +114,7 @@ class Animal:
         """rotate only the head"""
         result = []
         # angles = [-20, -10, 10, 20]
-        angles = np.arange(-10, 11, 2)
+        angles = np.arange(-20, 21, 4)
         for p in postures:
             for a in angles:
                 ar = a * (math.pi / 180)
@@ -135,8 +135,8 @@ class Animal:
         for p in postures:
             for d in distances:
                 moved = geometry.point_along_a_line_p(p.back, p.head, d)
-                delta = moved.difference(p.back)
-                result.append(self.Posture(p.head.sum(delta), moved, moved, True))
+                delta = moved - p.back
+                result.append(self.Posture(p.head + delta, moved, moved, True))
         return result
 
     def move_head_contracted(self, postures):
@@ -190,16 +190,27 @@ class Animal:
     def generate_postures(self):
         """enumerates the possible postures"""
 
-        disp = geometry.point_diff(self.centroid, self.prev_centroid)
-        postures = [self.Posture(geometry.point_move(self.head, disp), geometry.point_move(self.front, disp),
-                                 geometry.point_move(self.back, disp), self.contracted)]
+        centroid_scaled = self.centroid.scaled(self.host.scale_factor, self.host.config.skeletonization_border)
+        # "tether" the front to the centroid if it runs away too far
+        if np.linalg.norm(self.back-centroid_scaled, ord=2) > 50:
+            self.head = (self.head - self.front) + centroid_scaled
+            self.front = (self.front - self.front) + centroid_scaled
+            self.back = centroid_scaled
+
+        disp = self.centroid - self.prev_centroid
+        animal_vec = self.head - self.back
+
+        # if it appears that the animal is running backwards, flip the Posture
+        if np.dot(animal_vec, self.speed) < 0 and np.linalg.norm(self.speed) > 1.2 and not self.contracted:
+            postures = [self.Posture(self.back + disp, self.front + disp,
+                                     self.head + disp, self.contracted)]
+        else:
+            postures = [self.Posture(self.head + disp, self.front + disp,
+                                     self.back + disp, self.contracted)]
         postures0 = postures[:]
 
         if not self.contracted:
             p = self.move_back(postures0)
-            postures = postures + p
-
-            p = self.rotate_front(postures0)
             postures = postures + p
 
             p = self.move_front(postures0)
@@ -208,9 +219,14 @@ class Animal:
             p = self.move_head(postures0)
             postures = postures + p
 
-            p = self.rotate_head(postures0)
+            if self.host.postures_two_steps:
+                postures0 = postures[:]
+
+            p = self.rotate_front(postures0)
             postures = postures + p
 
+            p = self.rotate_head(postures0)
+            postures = postures + p
         else:
             p = self.move_back_contracted(postures0)
             postures = postures + p
@@ -229,9 +245,9 @@ class Animal:
     def find_closest_centroid(self, c):
         if c.ndim == 1:
             return tuple(c)
-        dist2 = np.sum((c - np.array(self.centroid))**2, axis=1)
+        dist2 = np.sum((c - np.array(self.centroid)) ** 2, axis=1)
         closest_idx = np.argmin(dist2)
-        return tuple(c[closest_idx, :])
+        return geometry.Point(c[closest_idx, :])
 
     # noinspection PyShadowingBuiltins
     def __init__(self, host, id, start_x, start_y, end_x, end_y, centroids, config=Configuration()):
@@ -240,10 +256,12 @@ class Animal:
         self.id = id  # a id number for the animal
         self.config = config
         self.centroid = None
-        self.centroid = ((start_x + end_x) / 2, (start_y + end_y) / 2)
-        if centroids:
+        self.centroid = geometry.Point((start_x + end_x) / 2, (start_y + end_y) / 2)
+        if centroids is not None:
             self.centroid = self.find_closest_centroid(centroids)
         self.prev_centroid = self.centroid
+        self.speed = geometry.Point(0., 0.)
+        self.speed_alpha = 0.92
         logger.debug("setting centroid at {}, {}".format(self.centroid[0], self.centroid[1]))
         self.scaled_max_body_length = config.max_body_length * self.host.scale_factor
         self.scaled_max_width = self.config.max_body_width * self.host.scale_factor
@@ -295,7 +313,7 @@ class Animal:
         r.front = self.front.affine_r(self.host.scale_factor, border)
         r.back = self.back.affine_r(self.host.scale_factor, border)
         r.contracted = self.contracted
-
+        r.speed = self.speed
         return r
 
     # noinspection PyUnusedLocal
@@ -308,24 +326,16 @@ class Animal:
         self.prev_centroid = self.centroid
         logger.debug("centroids are " + str(centroids))
         self.centroid = self.find_closest_centroid(centroids)
-
-        # debug = [("rm", raw_matrix)]
-        # find a threshold for the subtracted image using the Otsu's method
-        # thr, thresh_matrix = cv2.threshold(raw_matrix, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        # FIXME this should be done in the main tracking routine
-
-        # thr, foo = cv2.threshold(raw_matrix, 50, 255, cv2.THRESH_BINARY)
-        # thr = 50
-
-        # debug.append(("otsu", thresh_matrix))
-        # self.host.logger.log("threshold: " + str(thr))
-
+        self.speed = self.speed_alpha * self.speed + \
+           (1. - self.speed_alpha) * (self.centroid - self.prev_centroid)
+        logger.debug("speed is {}".format(np.linalg.norm(self.speed)))
+        # FIXME make Point a numpy array and uncomment
         matrix = raw_matrix.astype(np.float)
-        matrix = matrix - 100
+        matrix = matrix - 100.
         # matrix = matrix - thr
         # matrix[matrix < 0] = -50
 
-        # setting up the alternative postures
+        # setting up the alternative pos    tures
         postures = self.generate_postures()
         logger.debug("generated {} postures".format(len(postures)))
         mask_size = 50
@@ -350,9 +360,9 @@ class Animal:
             mask_center = geometry.Point(mask_half, mask_half)
             animal_center = self.back
 
-            h = p.head.diff(animal_center).add(mask_center)
-            f = p.front.diff(animal_center).add(mask_center)
-            b = p.back.diff(animal_center).add(mask_center)
+            h = p.head - animal_center + mask_center
+            f = p.front - animal_center + mask_center
+            b = p.back - animal_center + mask_center
 
             if not p.contracted:
                 head_p1 = geometry.point_along_a_perpendicular(f.x, f.y, h.x, h.y, h.x, h.y, hr)
@@ -442,49 +452,6 @@ class Animal:
 
         rows, cols = raw_matrix.shape[:2]
 
-        # total_postures = len(postures)
-        #
-        # c = 0
-        # dc = 1
-        # cell_size = 40
-        #
-        # while c < min(total_postures, 10):
-        #
-        #     debug_postures = np.zeros((rows, cols), np.uint8)
-        #
-        #     for y in range(0, 5):
-        #         done = False
-        #         for x in range(0, 7):
-        #             if c == total_postures:
-        #                 done = True
-        #                 break
-        #
-        #             white = (255, 255, 255)
-        #             gray = (155, 155, 155)
-        #
-        #             p = postures[c]
-        #
-        #             cell_center = geometry.Point(x * cell_size + cell_size / 2, y * cell_size + cell_size / 2)
-        #             animal_center = self.back
-        #
-        #             cv2.rectangle(debug_postures, (x * cell_size, y * cell_size),
-        #                           (x * cell_size + cell_size, y * cell_size + cell_size), gray)
-        #
-        #             cv2.circle(debug_postures, p.head.diff(animal_center).add(cell_center).as_int_tuple(),
-        #                        self.scaled_head_radius, white)
-        #             cv2.circle(debug_postures, p.front.diff(animal_center).add(cell_center).as_int_tuple(),
-        #                        self.scaled_front_radius, white)
-        #             cv2.circle(debug_postures, p.back.diff(animal_center).add(cell_center).as_int_tuple(),
-        #                        self.scaled_back_radius, white)
-        #
-        #             c += 1
-        #
-        #         if done:
-        #             break
-        #
-        #     debug.append(("postures " + str(dc), debug_postures))
-        #     dc = dc + 1
-
         return debug
 
 
@@ -529,11 +496,12 @@ class Tracker:
         config.pixels_to_meters = float(config.scale) / frame_width
         config.max_animal_velocity = 1  # m/s
         config.vertebra_length = config.vertebra_length * self.scale_factor
-
+        self.show_thresholded = False
         self.background = None
         self.show_model = True
         self.show_posture = True
         self.image_scale_factor = 1
+        self.postures_two_steps = False
 
     def calculate_scale_factor(self, frame_width, frame_height):
         """calculate a scale factor that will make the frame coincide the "dominant" dimension with the skeletonization
@@ -606,7 +574,6 @@ class Tracker:
         logger.debug("start tracking {} animals".format(len(self.animals)))
         if self.background is None:
             return
-        debug = None
 
         frame_gr = cv2.absdiff(frame, self.background)  # take the absolute difference
         frame_gr = cv2.cvtColor(frame_gr, cv2.COLOR_BGR2GRAY)  # convert to grayscale
@@ -615,45 +582,14 @@ class Tracker:
         frame_gr1 = frame_gr.copy()
 
         thr, _ = cv2.threshold(frame_gr, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        ret, frame_gr = cv2.threshold(frame_gr, thr + 30, 254, cv2.THRESH_BINARY)
-        # FIXME do the thresholding and subtraction
-        # kernel = np.ones((10, 10), np.uint8)
-        # frame_gr = cv2.erode(frame_gr, kernel, iterations = 3)
-
-        # frame_gr = morphology.skeletonize(frame_gr > 50)
-        # frame_gr, distance = morphology.medial_axis(frame_gr > 50, return_distance = True)
-        # frame_gr = bwmorph_thin.bwmorph_thin(frame_gr > 50, 30)
-        # frame_gr = frame_gr.astype(np.uint8);
-
-        # cv2.normalize(frame_gr, frame_gr, 0, 255, cv2.NORM_MINMAX)
-
-        # debug.append(("source", frame_gr))
-
-        # frame_gr_resized1 = filters.gaussian_filter(frame_gr, 8)
-        # cv2.normalize(frame_gr_resized1, frame_gr_resized1, 0, 255, cv2.NORM_MINMAX)
-
-        # frame_gr_resized1 = frame_gr
-        #
-        # # debug.append(("smoothed", frame_gr_resized1))
-        #
-        # # frame_gr_resized = self.resize(frame_gr_resized1)  # resize to the skeletonized size and go to 8-bit integers
-        # frame_gr_resized = frame_gr_resized1
-        # frame_gr_resized = frame_gr_resized.astype(np.uint8)
-
-        # ret, frame_gr_resized = cv2.threshold(frame_gr_resized, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        # frame_gr_thresholded = frame_gr_resized > 0
-        # try:
-        logger.debug("frame " + str(np.unique(frame_gr)))
-        # frame_gr_resized = morphology.remove_small_objects(frame_gr, 400, 1, in_place=False)
+        ret, frame_gr = cv2.threshold(frame_gr, thr + 40, 254, cv2.THRESH_BINARY)
 
         nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frame_gr, connectivity=8)
-        # connectedComponentswithStats yields every seperated component with information on each of them, such as size
-        # the following part is just taking out the background which is also considered a component, but most of the time we don't want that.
         sizes = stats[1:, -1]
         max_comp = np.argmax(sizes)
         frame_gr_resized = np.zeros(frame_gr.shape, np.uint8)
-        frame_gr_resized[output==max_comp+1] = 255
-        self.centroids = centroids[max_comp+1, :]
+        frame_gr_resized[output == max_comp + 1] = 255
+        self.centroids = centroids[max_comp + 1, :]
         if self.centroids.ndim == 1:
             self.centroids = self.centroids[np.newaxis, :]
         frame_mask = frame_gr_resized.copy()
@@ -678,7 +614,7 @@ class Tracker:
         # tracking_flow_element = TrackingFlowElement(frame_time, positions, frame_gr, debug)
         tracking_flow_element = None
 
-        frame_display = frame_gr_resized[20:-20,20:-20]
+        frame_display = frame_gr_resized[border:-border, border:-border]
 
         frame_display = cv2.cvtColor(frame_display, cv2.COLOR_GRAY2BGR)
         # frame_alpha = frame_display
@@ -686,9 +622,10 @@ class Tracker:
         # background = cv2.multiply((1 - frame_alpha), frame)
         #
         # frame_display = cv2.add(foreground, background)
-        frame[:] = frame_display
+        if self.show_thresholded:
+            frame[:] = frame_display
         for ix in range(self.centroids.shape[0]):
-            cv2.circle(frame, tuple(self.centroids[ix,:].astype(np.uint16)), 2, (0, 255, 0))
+            cv2.circle(frame, tuple(self.centroids[ix, :].astype(np.uint16)), 2, (0, 0, 255))
         self.draw_animals(frame)
         return tracking_flow_element
 

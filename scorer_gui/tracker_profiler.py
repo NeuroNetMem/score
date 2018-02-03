@@ -17,16 +17,23 @@ class ProfilerMainWindow(QtWidgets.QMainWindow):
         self.setSizePolicy(sizePolicy)
         self.cameraWidget = CVVideoWidget(self)
         self.setMinimumSize(550, 450)
-        video_filename = '/Users/fpbatta/Data/obj_test/mouse_training_OS_5trials_inteldis_23_27animals_t0001_raw.avi'
-        background_frame = 97
+
         # add_animal_frame = 859
         # animal_start = (124, 331)
         # animal_end = (110, 339)
 
+        # video_filename = '/Users/fpbatta/Data/obj_test/mouse_training_OS_5trials_inteldis_23_27animals_t0001_raw.avi'
         # start (438, 20), end (416, 19) at frame 439
-        add_animal_frame = 439
-        animal_start = (438, 20)
-        animal_end = (416, 19)
+        # background_frame =  97
+        # add_animal_frame = 439
+        # animal_start = (438, 20)
+        # animal_end = (416, 19)
+
+        video_filename = '/Users/fpbatta/Data/obj_test/mouse_training_OS_5trials_inteldis_23_27animals_t0004_raw.avi'
+        background_frame = 90
+        add_animal_frame = 200
+        animal_start = (90, 34)
+        animal_end = (75, 31)
         self.device = VideoDeviceManager(video_file=video_filename)
         self.cameraWidget.set_device(self.device)
         self.device.acquire_background(background_frame)

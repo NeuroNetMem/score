@@ -119,7 +119,7 @@ class DeviceManager(QtCore.QObject):
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
         self._timer.setInterval(self.interval)  # TODO restore normal timer
-        # self._timer.setInterval(500)
+        #self._timer.setInterval(250)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
         self._timer.start()
@@ -517,7 +517,7 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                if self.frame_no == 97:  #  FIXME bad hack just for testing purposes, remove ASAP!
+                if self.frame_no == 110:  #  FIXME bad hack just for testing purposes, remove ASAP!
                     self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
