@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.common import PandasError
 
-from scorer_gui.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 
 
 class SessionManager:

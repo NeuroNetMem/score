@@ -3,10 +3,10 @@ from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
 # noinspection PyUnresolvedReferences
-import scorer_gui.obj_rc
-from scorer_gui.obj_scorer_model import VideoDeviceManager, CameraDeviceManager
-from scorer_gui.obj_scorer_ui import Ui_MainWindow
-from scorer_gui.trial_dialog_ui import Ui_TrialDialog
+import score_behavior.obj_rc
+from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
+from score_behavior.score_window_ui import Ui_MainWindow
+from score_behavior.trial_dialog_ui import Ui_TrialDialog
 
 import logging
 

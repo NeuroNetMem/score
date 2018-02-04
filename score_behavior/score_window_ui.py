@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'obj_scorer_ui.ui'
+# Form implementation generated from reading ui file 'score_window_ui.ui'
 #
 # Created by: PyQt5 UI code generator 5.6
 #
@@ -203,9 +203,9 @@ class Ui_MainWindow(object):
         self.actionOpen_Live_Session.setText(_translate("MainWindow", "Open Live Session..."))
         self.actionOpen_Video_Session.setText(_translate("MainWindow", "Open Video Session..."))
 
-from scorer_gui.cv_video_widget import CVVideoWidget
-import scorer_gui.obj_rc
-import scorer_gui.play_rc
+from score_behavior.cv_video_widget import CVVideoWidget
+import score_behavior.obj_rc
+import score_behavior.play_rc
 
 if __name__ == "__main__":
     import sys

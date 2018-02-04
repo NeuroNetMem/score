@@ -8,7 +8,7 @@ import math
 # from skimage import filters
 #
 # from geometry import *
-import scorer_gui.geometry as geometry
+import score_behavior.geometry as geometry
 import logging
 
 logger = logging.getLogger(__name__)

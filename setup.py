@@ -9,11 +9,11 @@ setup(description='Behavioral scorer',
       author_email='fpbattaglia@gmail.com',
       version='0.3',
       license='GPL',
-      packages=['scorer_gui'],
-      package_data={'resources': ['scorer_gui/resources/*.*']},
+      packages=['score_behavior'],
+      package_data={'resources': ['score_behavior/resources/*.*']},
       include_package_data=True,
-      name='scorer_gui',
+      name='score_behavior',
       entry_points="""
         [console_scripts]
-        scorer32=scorer_gui.obj_scorer:_main
+        scorer32=score_behavior.score:_main
       """, install_requires=['pandas'])

@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtDesigner import QPyDesignerCustomWidgetPlugin
 
-from scorer_gui.cv_video_widget import CVVideoWidget
+from score_behavior.cv_video_widget import CVVideoWidget
 
 
 class CVVideoWidgetPlugin(QPyDesignerCustomWidgetPlugin):
@@ -72,7 +72,7 @@ class CVVideoWidgetPlugin(QPyDesignerCustomWidgetPlugin):
     # Return the name of the module containing the class that implements the
     # custom widget.  It may include a module path.
     def includeFile(self):
-        return "scorer_gui.cv_video_widget"
+        return "score_behavior.cv_video_widget"
 
 
 # Define the image used for the icon.

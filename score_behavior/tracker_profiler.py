@@ -5,8 +5,8 @@ from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 import logging
 
-from scorer_gui.cv_video_widget import CVVideoWidget
-from scorer_gui.obj_scorer_model import VideoDeviceManager
+from score_behavior.cv_video_widget import CVVideoWidget
+from score_behavior.score_controller import VideoDeviceManager
 
 
 class ProfilerMainWindow(QtWidgets.QMainWindow):

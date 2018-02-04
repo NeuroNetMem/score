@@ -8,10 +8,10 @@ import warnings
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
-from scorer_gui.ObjectSpace.dialog_controller import TrialDialogController
-from scorer_gui.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
-from scorer_gui.ObjectSpace.analyzer import ObjectSpaceTrackingAnalyzer
-from scorer_gui.global_defs import TrialState
+from score_behavior.ObjectSpace.dialog_controller import TrialDialogController
+from score_behavior.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
+from score_behavior.ObjectSpace.analyzer import ObjectSpaceTrackingAnalyzer
+from score_behavior.global_defs import TrialState
 
 
 def find_how_many_cameras():

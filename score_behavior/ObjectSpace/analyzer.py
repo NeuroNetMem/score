@@ -1,8 +1,8 @@
 import cv2
 
 from PyQt5 import QtCore
-from scorer_gui.global_defs import TrialState
-from scorer_gui.tracking.tracker import Tracker
+from score_behavior.global_defs import TrialState
+from score_behavior.tracking.tracker import Tracker
 
 import logging
 logger = logging.getLogger(__name__)
