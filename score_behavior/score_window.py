@@ -139,6 +139,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
         self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
+        self.ui.actionStop_Acquisition.setEnabled(False)
         # self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
         # self.ui.actionSave_to.setEnabled(False)
         self.ui.rawVideoCheckBox.setEnabled(False)
@@ -166,7 +167,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.is_paused_signal.connect(self.has_paused)
             self.ui.playButton.clicked.connect(self.device.start_acquisition)
             self.ui.pauseButton.clicked.connect(self.device.set_paused)
-            self.ui.stopButton.clicked.connect(self.device.stop_acquisition)
+            self.ui.actionStop_Acquisition.triggered.connect(self.device.stop_acquisition)
             self.ui.rawVideoCheckBox.toggled.connect(self.device.set_raw_out)
             self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
@@ -219,29 +220,29 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.playButton.setEnabled(can_acquire)
         if can_acquire:
             self.ui.pauseButton.setEnabled(False)
-            self.ui.stopButton.setEnabled(False)
+            self.ui.actionStop_Acquisition.setEnabled(False)
 
     @QtCore.pyqtSlot(bool)
     def acquisition_started_stopped(self, val):
         self.ui.playButton.setEnabled(False)
         if val:
             self.ui.pauseButton.setEnabled(True)
-            self.ui.stopButton.setEnabled(True)
+            self.ui.actionStop_Acquisition.setEnabled(True)
             self.ui.scaleComboBox.setEnabled(False)
         else:
             self.ui.pauseButton.setEnabled(False)
-            self.ui.stopButton.setEnabled(False)
+            self.ui.actionStop_Acquisition.setEnabled(False)
 
     @QtCore.pyqtSlot(bool)
     def has_paused(self, val):
         if val:
             self.ui.playButton.setEnabled(True)
             self.ui.pauseButton.setEnabled(False)
-            self.ui.stopButton.setEnabled(True)
+            self.ui.actionStop_Acquisition.setEnabled(True)
         else:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(True)
-            self.ui.stopButton.setEnabled(True)
+            self.ui.actionStop_Acquisition.setEnabled(True)
 
     @QtCore.pyqtSlot(str)
     def error_and_close(self, e):
