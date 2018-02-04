@@ -1,7 +1,6 @@
 # a simplified UI for testing/profiling of animal tracking
 
 from PyQt5 import QtCore
-#from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 import logging
 

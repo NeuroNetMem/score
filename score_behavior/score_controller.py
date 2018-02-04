@@ -119,7 +119,7 @@ class DeviceManager(QtCore.QObject):
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
         self._timer.setInterval(self.interval)  # TODO restore normal timer
-        #self._timer.setInterval(250)
+        # self._timer.setInterval(250)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
         self._timer.start()
@@ -495,10 +495,10 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
-    #     import cProfile  # FIXME this is for profiling only
-    #     cProfile.runctx("self.query_frame_()", globals(), locals(), filename='profile.stat')
-    #
-    # def query_frame_(self):
+        #     import cProfile  # FIXME this is for profiling only
+        #     cProfile.runctx("self.query_frame_()", globals(), locals(), filename='profile.stat')
+        #
+        # def query_frame_(self):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
         if not self.capturing:
@@ -517,7 +517,7 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                if self.frame_no == 110:  #  FIXME bad hack just for testing purposes, remove ASAP!
+                if self.frame_no == 110:  # FIXME bad hack just for testing purposes, remove ASAP!
                     self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
@@ -526,7 +526,7 @@ class VideoDeviceManager(DeviceManager):
 
         if self.to_release:
             self.release()
-        # print("queried frame {}".format(self.frame_no))
+
     @property
     def frame_size(self):
         w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -566,7 +566,6 @@ class VideoDeviceManager(DeviceManager):
     def move_to_frame(self, frame_no):
         if frame_no < self.frame_no:
             warnings.warn("can't skip to earlier frame")
-        f = self._device.get(cv2.CAP_PROP_POS_FRAMES)
         while self._device.get(cv2.CAP_PROP_POS_FRAMES) < frame_no:
             self._device.read()
         self.frame_no = frame_no
@@ -585,6 +584,7 @@ class VideoDeviceManager(DeviceManager):
             self.move_to_frame(frame_no)
         self.analyzer.start_animal_init(start[0], start[1])
         self.analyzer.complete_animal_init(end[0], end[1], self.frame_no)
+
 
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30
