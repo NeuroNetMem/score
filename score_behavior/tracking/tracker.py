@@ -496,7 +496,7 @@ class Tracker:
         config.pixels_to_meters = float(config.scale) / frame_width
         config.max_animal_velocity = 1  # m/s
         config.vertebra_length = config.vertebra_length * self.scale_factor
-        self.show_thresholded = False
+        self.show_thresholded = True
         self.background = None
         self.show_model = True
         self.show_posture = True

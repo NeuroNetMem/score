@@ -118,7 +118,7 @@ class DeviceManager(QtCore.QObject):
         # self._device = self.init_device()
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
-        self._timer.setInterval(self.interval)  # TODO restore normal timer
+        self._timer.setInterval(self.interval)
         # self._timer.setInterval(250)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
@@ -495,7 +495,7 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot()
     def query_frame(self):
-        #     import cProfile  # FIXME this is for profiling only
+        #     import cProfile  #  this is for profiling only
         #     cProfile.runctx("self.query_frame_()", globals(), locals(), filename='profile.stat')
         #
         # def query_frame_(self):

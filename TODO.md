@@ -19,7 +19,8 @@ X separate experiment logic from manager
     - add interface for set background, add animals, add animals auto
     set image threshold, set speed threshold for inversions
 - filename include datetime, included in results file
-
+- factor out the actual video reader, provide, read, move to frame, speed, 
+the timer?
 - add automatic scoring/handling
 - add tracking visualization, gaze, trajectory, perspec
 
