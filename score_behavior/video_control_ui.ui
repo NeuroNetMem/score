@@ -91,7 +91,7 @@
           </size>
          </property>
         </widget>
-        <widget class="QToolButton" name="pauseButton_2">
+        <widget class="QToolButton" name="pauseButton">
          <property name="geometry">
           <rect>
            <x>40</x>
@@ -203,10 +203,39 @@
         <property name="title">
          <string>Time in video</string>
         </property>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="timeLabel">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>24</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>00:00.00</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
       <item row="3" column="0" colspan="2">
-       <widget class="QSlider" name="horizontalSlider">
+       <widget class="QSlider" name="timeSlider">
         <property name="accessibleName">
          <string/>
         </property>
@@ -244,6 +273,12 @@
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
           <widget class="QComboBox" name="speedComboBox">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>20</height>
+            </size>
+           </property>
            <property name="maximumSize">
             <size>
              <width>60</width>
@@ -258,8 +293,31 @@
       <item row="2" column="1">
        <widget class="QGroupBox" name="groupBox_5">
         <property name="title">
-         <string>GroupBox</string>
+         <string>Frame</string>
         </property>
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="frameLabel">
+           <property name="font">
+            <font>
+             <pointsize>24</pointsize>
+            </font>
+           </property>
+           <property name="text">
+            <string>0000</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>

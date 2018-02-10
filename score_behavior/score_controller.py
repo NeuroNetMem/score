@@ -476,11 +476,15 @@ class DeviceManager(QtCore.QObject):
 class VideoDeviceManager(DeviceManager):
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
     frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
+    time_pos_signal = QtCore.pyqtSignal(str, name="CameraDevice.time_pos_signal")
+
+    speed_possible = ['0.5', '0.8', '1', '1.2', '1.5', '2']
 
     def __init__(self, video_file=None, parent=None, session_file=None):
         self.video_file = video_file
         super(VideoDeviceManager, self).__init__(parent=parent, session_file=session_file)
         self.save_raw_video = False
+        self.playback_speed = 1.
         self.init_thread()
 
     def init_device(self):
@@ -510,6 +514,8 @@ class VideoDeviceManager(DeviceManager):
                 self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
                 self.last_frame = frame
                 self.frame_pos_signal.emit(self.frame_no)
+                self.time_pos_signal.emit(str(self.get_cur_time()))
+
                 h, w, _ = frame.shape
                 if self.save_raw_video and self.raw_out and self.acquiring:
                     self.raw_out.write(frame)
@@ -535,6 +541,7 @@ class VideoDeviceManager(DeviceManager):
 
     @QtCore.pyqtSlot(int)
     def skip_to_frame(self, val):
+        #  TODO use move_to_frame, rewind when necessary, connect to the session manager to erase
         self._device.set(cv2.CAP_PROP_POS_FRAMES, float(val))
 
     @property
@@ -584,6 +591,32 @@ class VideoDeviceManager(DeviceManager):
             self.move_to_frame(frame_no)
         self.analyzer.start_animal_init(start[0], start[1])
         self.analyzer.complete_animal_init(end[0], end[1], self.frame_no)
+
+    def set_speed(self, speed):
+        self.playback_speed = speed
+        self.interval = int(1.e3 / (self.fps * speed))
+        self._timer.setInterval(self.interval)
+
+    @QtCore.pyqtSlot()
+    def rewind_action(self):
+        pass  # TODO
+
+    @QtCore.pyqtSlot()
+    def fastforward_action(self):
+        pass  # TODO
+
+    @QtCore.pyqtSlot()
+    def play_action(self):
+        pass  # TODO
+
+    @QtCore.pyqtSlot()
+    def pause_action(self):
+        pass  # TODO
+
+    @QtCore.pyqtSlot(int)
+    def speed_action(self, i):
+        speed = float(self.speed_possible[i])
+        self.set_speed(speed)
 
 
 class CameraDeviceManager(DeviceManager):

@@ -75,16 +75,23 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QPushButton" name="pushButton">
+          <widget class="QPushButton" name="addTrialButton">
            <property name="text">
             <string>Add Trial</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_2">
+          <widget class="QPushButton" name="skipTrialButton">
            <property name="text">
             <string>Skip Trial</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="commentButton">
+           <property name="text">
+            <string>Comment</string>
            </property>
           </widget>
          </item>

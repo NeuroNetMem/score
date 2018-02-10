@@ -5,9 +5,9 @@ from PyQt5 import QtWidgets
 # noinspection PyUnresolvedReferences
 import score_behavior.obj_rc
 from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
+from score_behavior.video_control import VideoControlWidget
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.trial_dialog_ui import Ui_TrialDialog
-
 import logging
 
 
@@ -176,7 +176,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.session_set_signal.connect(self.session_was_set)
             self.device.video_file_changed_signal.connect(self.ui.destLabel.setText)
             self.device.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
-            self.ui.commentsButton.clicked.connect(self.get_comments)
+            # self.ui.commentsButton.clicked.connect(self.get_comments)  # FIXME move to session manager
             # noinspection PyUnresolvedReferences
             self.comments_received.connect(self.device.set_comments)
             self.device.yes_no_question_signal.connect(self.yes_no_question)
@@ -352,7 +352,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.cleanup()
         self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
-        self.ui.videoInSlider.setEnabled(False)
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
@@ -369,15 +368,39 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.cleanup()
         self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file)
         self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
+        control_widget = VideoControlWidget()
         last_frame = self.device.video_last_frame()
-        self.ui.videoInSlider.setEnabled(True)
-        self.ui.videoInSlider.setMinimum(0)
-        self.ui.videoInSlider.setMaximum(last_frame)
+        control_widget.ui.playButton.clicked.connect(self.device.play_action)
+        control_widget.ui.pauseButton.clicked.connect(self.device.pause_action)
+        control_widget.ui.fastForwardButton.clicked.connect(self.device.fastforward_action)
+        control_widget.ui.rewindButton.clicked.connect(self.device.rewind_action)
+
+        control_widget.ui.timeSlider.setEnabled(True)
+        control_widget.ui.timeSlider.setMinimum(0)
+        control_widget.ui.timeSlider.setMaximum(last_frame)
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
-        self.device.video_finished_signal.connect(self.video_finished)
-        self.device.frame_pos_signal.connect(self.ui.videoInSlider.setValue)
-        self.ui.videoInSlider.sliderMoved.connect(self.device.skip_to_frame)
+        self.device.video_finished_signal.connect(self.video_finished)  # TODO still needed?
+
+        self.device.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
+        self.device.frame_pos_signal.connect(control_widget.set_frame)
+        self.device.time_pos_signal.connect(control_widget.ui.timeLabel.setText)
+
+        control_widget.ui.timeSlider.sliderMoved.connect(self.device.skip_to_frame)
+
+        # self.ui.rotateComboBox.addItems([str(i) for i in self.device.rotate_options])
+        # self.ui.rotateComboBox.setEnabled(True)
+        # self.ui.rotateComboBox.setCurrentIndex(0)
+        # self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
+
+        control_widget.ui.speedComboBox.addItems([str(i) for i in self.device.speed_possible])
+        control_widget.ui.speedComboBox.setEnabled(True)
+        # default speed is 1
+        ix1 = [i for i in range(len(self.device.speed_possible)) if self.device.speed_possible[i] == '1']
+        control_widget.ui.speedComboBox.setCurrentIndex(ix1[0])
+        control_widget.ui.speedComboBox.currentIndexChanged.connect(self.device.speed_action)
+
+        self.ui.sidebarWidget.layout().addWidget(control_widget)
 
     def keyPressEvent(self, event):
         if self.device:
@@ -396,7 +419,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         event.accept()
 
     @QtCore.pyqtSlot()
-    def get_comments(self):
+    def get_comments(self):  # FIXME move to session manager controller
         # noinspection PyArgumentList
         dialog = QtWidgets.QInputDialog(None)
         dialog.setInputMode(QtWidgets.QInputDialog.TextInput)
@@ -408,7 +431,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.comments_dialog = dialog
         dialog.show()
 
-    def process_comments(self):
+    def process_comments(self):  # FIXME move to session manager controller
         text = self.comments_dialog.textValue()
         print("window comments: " + text)
         self.comments_received.emit(text)
