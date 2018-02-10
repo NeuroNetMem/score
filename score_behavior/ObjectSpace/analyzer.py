@@ -1,54 +1,12 @@
 import cv2
 
 from PyQt5 import QtCore
+
+from score_behavior.analyzer import FrameAnalyzer
 from score_behavior.global_defs import TrialState
-from score_behavior.tracking.tracker import Tracker
 
 import logging
 logger = logging.getLogger(__name__)
-
-
-class FrameAnalyzer:
-    def __init__(self, device):
-        self.device = device
-        self.csv_out = None
-
-    @staticmethod
-    def make_csv_filename(video_filename):
-        import os
-        import glob
-        dirname = os.path.dirname(video_filename)
-        basename, _ = os.path.splitext(os.path.basename(video_filename))
-        gl = os.path.join(dirname, basename + '_????.csv')
-        ex_csv_files = glob.glob(gl)
-        if len(ex_csv_files) == 0:
-            filename = os.path.join(dirname, basename + '_0001.csv')
-        else:
-            ex_nos = [int(s[-8:-4]) for s in ex_csv_files]
-            csv_no = max(ex_nos) + 1
-            csv_no = str(csv_no).zfill(4)
-            filename = os.path.join(dirname, basename + '_' + csv_no + '.csv')
-        return filename
-
-    def open_csv_files(self):
-        filename_csv = self.make_csv_filename(self.device.video_out_filename)
-        self.csv_out = open(filename_csv, 'w')
-
-    def close(self):
-        if self.csv_out:
-            self.csv_out.close()
-
-    def can_track(self):
-        return False
-
-    def start_animal_init(self, x, y):
-        pass
-
-    def update_animal_init(self, x, y):
-        pass
-
-    def complete_animal_init(self, x, y, frame_no=0):
-        pass
 
 
 class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
@@ -63,11 +21,15 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                   'LL': (lambda w, h: ((8, h - 8), (int(w * 0.3), int(h * 0.7)))),
                   'LR': (lambda w, h: ((w - 8, h - 8), (int(w * 0.7), int(h * 0.7))))}
 
-    def __init__(self, device):
-        super(ObjectSpaceFrameAnalyzer, self).__init__(device)
+    def __init__(self, device, parent=None):
+        super(ObjectSpaceFrameAnalyzer, self).__init__(device, parent=parent)
         self.obj_state = {}
         self.device = device
         self.init_obj_state()
+        self.track_start_x = -1
+        self.track_start_y = -1
+        self.track_end_x = -1
+        self.track_end_y = -1
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
@@ -104,6 +66,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
 
     def process_frame(self, frame):
         h, w, _ = frame.shape
+        super(ObjectSpaceFrameAnalyzer, self).process_frame(frame)
         for place, state in self.obj_state.items():
             if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
@@ -111,50 +74,33 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
 
+    @QtCore.pyqtSlot(int, int)
+    def mouse_press_action(self, x, y):
+        self.track_start_x = x
+        self.track_start_y = y
+        self.start_animal_init(x, y)
 
-class ObjectSpaceTrackingAnalyzer(ObjectSpaceFrameAnalyzer):
-    def __init__(self, device):
-        super(ObjectSpaceTrackingAnalyzer, self).__init__(device)
-        self.tracker = None
-        self.animal_start_x = -1
-        self.animal_start_y = -1
-        self.animal_end_x = -1
-        self.animal_end_y = -1
+    @QtCore.pyqtSlot(int, int)
+    def mouse_move_action(self, x, y):
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.update_animal_init(x, y)
 
-    def can_track(self):
-        return True
+    @QtCore.pyqtSlot(int, int)
+    def mouse_release_action(self, x, y):
+        if self.track_start_x == -1:
+            return
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.complete_animal_init(x, y, frame_no=self.device.frame_no)
 
-    def init_tracker(self, frame_size):
-        self.tracker = Tracker(frame_size)
-
-    def set_background(self, frame, frame_no=0):
-        log_msg = "Setting background starting at frame {}.".format(frame_no)
-        logger.info(log_msg)
-        self.tracker.set_background(frame)
-
-    def process_frame(self, frame):
-        super(ObjectSpaceTrackingAnalyzer, self).process_frame(frame)
-        self.tracker.track(frame)
-        if self.animal_start_x != -1:
-            yellow = (255, 255, 0)
-            cv2.line(frame, (self.animal_start_x, self.animal_start_y),
-                     (self.animal_end_x, self.animal_end_y), yellow, 2)
-
-    def start_animal_init(self, x, y):
-        self.animal_start_x = x
-        self.animal_start_y = y
-
-    def update_animal_init(self, x, y):
-        self.animal_end_x = x
-        self.animal_end_y = y
-
-    def complete_animal_init(self, x, y, frame_no=0):
-        log_msg = "initializing animal at start ({}, {}), end ({}, {}) at frame {}".format(
-            self.animal_start_x, self.animal_start_y, x, y, frame_no)
-        logger.info(log_msg)
-        self.animal_end_x = x
-        self.animal_end_y = y
-        self.tracker.add_animal(self.animal_start_x, self.animal_start_y,
-                                self.animal_end_x, self.animal_end_y)
-        self.animal_start_x = -1
-        self.animal_start_y = -1

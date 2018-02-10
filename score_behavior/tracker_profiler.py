@@ -6,6 +6,7 @@ import logging
 
 from score_behavior.cv_video_widget import CVVideoWidget
 from score_behavior.score_controller import VideoDeviceManager
+from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 
 
 class ProfilerMainWindow(QtWidgets.QMainWindow):
@@ -23,7 +24,7 @@ class ProfilerMainWindow(QtWidgets.QMainWindow):
 
         video_filename = '/Users/fpbatta/Data/obj_test/mouse_training_OS_5trials_inteldis_23_27animals_t0001_raw.avi'
         # start (438, 20), end (416, 19) at frame 439
-        background_frame =  97
+        background_frame = 97
         add_animal_frame = 439
         animal_start = (438, 20)
         animal_end = (416, 19)
@@ -34,6 +35,9 @@ class ProfilerMainWindow(QtWidgets.QMainWindow):
         # animal_start = (90, 34)
         # animal_end = (75, 31)
         self.device = VideoDeviceManager(video_file=video_filename)
+        self.analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self.analyzer.init_tracker(self.device.frame_size)
+        self.device.set_analyzer(self.analyzer)
         self.cameraWidget.set_device(self.device)
         self.device.acquire_background(background_frame)
         self.device.add_animal(animal_start, animal_end, add_animal_frame)

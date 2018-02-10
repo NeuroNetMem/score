@@ -1,13 +1,8 @@
 import numpy as np
 import cv2
 import math
-# import threading
-# import Queue
-# import pdb
-# import time
-# from skimage import filters
-#
-# from geometry import *
+from enum import Enum
+
 import score_behavior.geometry as geometry
 import logging
 
@@ -78,7 +73,7 @@ class Animal:
                     continue
                 moved = geometry.point_along_a_line_p(p.back, p.front, cd + d)
                 delta = moved - p.front
-                result.append(self.Posture(p.head +delta, moved, p.back))
+                result.append(self.Posture(p.head + delta, moved, p.back))
         return result
 
     def move_head(self, postures):
@@ -201,7 +196,8 @@ class Animal:
         animal_vec = self.head - self.back
 
         # if it appears that the animal is running backwards, flip the Posture
-        if np.dot(animal_vec, self.speed) < 0 and np.linalg.norm(self.speed) > 1.2 and not self.contracted:
+        if np.dot(animal_vec, self.speed) < 0 and np.linalg.norm(self.speed) > self.host.speed_threshold \
+                and not self.contracted:
             postures = [self.Posture(self.back + disp, self.front + disp,
                                      self.head + disp, self.contracted)]
         else:
@@ -327,9 +323,8 @@ class Animal:
         logger.debug("centroids are " + str(centroids))
         self.centroid = self.find_closest_centroid(centroids)
         self.speed = self.speed_alpha * self.speed + \
-           (1. - self.speed_alpha) * (self.centroid - self.prev_centroid)
+        (1. - self.speed_alpha) * (self.centroid - self.prev_centroid)
         logger.debug("speed is {}".format(np.linalg.norm(self.speed)))
-        # FIXME make Point a numpy array and uncomment
         matrix = raw_matrix.astype(np.float)
         matrix = matrix - 100.
         # matrix = matrix - thr
@@ -466,6 +461,16 @@ class TrackingFlowElement:
 
 
 class Tracker:
+
+    class State(Enum):
+        INACTIVE = 1  # no background or otherwise not ready
+        READY = 2  # ready, but not tracking any animals
+        TRACKING = 3  # tracking animals
+        ACQUIRING_BG = 4
+
+    state_labels = {State.INACTIVE: 'Inactive', State.READY: 'Ready', State.TRACKING: 'Tracking',
+                    State.ACQUIRING_BG: 'BG Acq.'}
+
     class Configuration:
         """configuration values TODO to be superseded by a config file?"""
         skeletonization_res_width = 550 / 1.4
@@ -496,12 +501,30 @@ class Tracker:
         config.pixels_to_meters = float(config.scale) / frame_width
         config.max_animal_velocity = 1  # m/s
         config.vertebra_length = config.vertebra_length * self.scale_factor
-        self.show_thresholded = True
+        self.show_thresholded = False
+        self.component_threshold = 40
+        self.speed_threshold = 1.2
+        self.max_num_animals = 1
         self.background = None
         self.show_model = True
         self.show_posture = True
         self.image_scale_factor = 1
         self.postures_two_steps = False
+        self._state = self.State.INACTIVE
+        self.tracker_controller = None
+        self.background_frames = 5
+        self.background_countdown = 0
+        self.background_buffer = None
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, s):
+        self._state = s
+        if self.tracker_controller:
+            self.tracker_controller.set_tracker_state(self.state_labels[s])
 
     def calculate_scale_factor(self, frame_width, frame_height):
         """calculate a scale factor that will make the frame coincide the "dominant" dimension with the skeletonization
@@ -534,44 +557,60 @@ class Tracker:
         """calculate background from the frames before the video stream ends, by averaging """
         bg = frame.astype(np.uint8)
         self.background = bg
+        self.state = self.State.READY
 
-    # TODO must add to GUI routine to add animals
+    def add_animal_auto(self):
+        # TODO now only for one animal
+        x = self.centroids[0, 0]
+        y = self.centroids[0, 1]
+        self.add_animal(x-10, y, x+10, y)
+
     def add_animal(self, start_x, start_y, end_x, end_y, config=Animal.Configuration()):
         """add an animal to the list of animals"""
         logger.debug("Adding animal")
         self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, self.centroids, config))
+        if len(self.animals) == self.max_num_animals:
+            self.state = self.State.TRACKING
+        if self.tracker_controller:
+            self.tracker_controller.set_tracked_animals_number(len(self.animals))
         return self.animals[-1]
 
     def delete_all_animals(self):
         """delete all tracked animals from the list"""
         self.animals = []
+        self.state = self.State.READY
+        self.tracker_controller.set_tracked_animals_number(len(self.animals))
 
     # noinspection PyUnusedLocal
     def track_animals(self, matrix, frame_time):
         """loop over animals and call the tracker in the animal class"""
         debug = []
 
-        # weights = []  # TODO these are initialized to matrices of ones, but what are they for?
-        # rows, cols = matrix.shape[:2]
-
-        # index = 2
-        # for _ in self.animals:
-        #     weight = np.ones((rows, cols), np.float)
-        #     weights.append(weight)
-        #     index += 1
-
-        # for a, w in zip(self.animals, weights):
-        #     debug1 = a.track(matrix, self.animals, frame_time)
-        #     # debug = debug + debug1
-
         for a in self.animals:
             debug1 = a.track(matrix, self.animals, self.centroids, frame_time)
 
         return debug
 
+    def grab_background(self):
+        self.background_countdown = self.background_frames
+        self.state = self.State.ACQUIRING_BG
+
     def track(self, frame, frame_time=0):
         """track one frame"""
         logger.debug("start tracking {} animals".format(len(self.animals)))
+        if self.background_countdown > 0:
+            if self.background_buffer is None:
+                self.background_buffer = np.zeros((self.config.skeletonization_res_height,
+                                                   self.config.skeletonization_res_width,
+                                                   3,
+                                                   self.background_frames), frame.dtype)
+            self.background_countdown -= 1
+            self.background_buffer[:, :, :, self.background_countdown] = frame
+            if self.background_countdown == 0:
+                bg = np.median(self.background_buffer, axis=3)
+                self.set_background(bg)
+                self.background_buffer = None
+
         if self.background is None:
             return
 
@@ -582,7 +621,7 @@ class Tracker:
         frame_gr1 = frame_gr.copy()
 
         thr, _ = cv2.threshold(frame_gr, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        ret, frame_gr = cv2.threshold(frame_gr, thr + 40, 254, cv2.THRESH_BINARY)
+        ret, frame_gr = cv2.threshold(frame_gr, thr + self.component_threshold, 254, cv2.THRESH_BINARY)
 
         nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(frame_gr, connectivity=8)
         sizes = stats[1:, -1]
@@ -604,7 +643,6 @@ class Tracker:
         border = self.config.skeletonization_border
         frame_gr_resized = cv2.copyMakeBorder(frame_gr_resized, border, border, border, border, cv2.BORDER_CONSTANT, 0)
 
-        # # track animals FIXME uncomment to track
         _ = self.track_animals(frame_gr_resized, frame_time)
         #
         # # debug = debug + debug1
@@ -627,6 +665,7 @@ class Tracker:
         for ix in range(self.centroids.shape[0]):
             cv2.circle(frame, tuple(self.centroids[ix, :].astype(np.uint16)), 2, (0, 0, 255))
         self.draw_animals(frame)
+        # TODO output data!
         return tracking_flow_element
 
     def project(self, pos):

@@ -48,19 +48,19 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 
 app = QApplication(sys.argv)
 
-QMessageBox.information(None, "PyQt Designer Plugins",
-        "<p>This example will start Qt Designer when you click the <b>OK</b> "
-        "button.</p>"
-        "<p>Before doing so it sets the <tt>PYQTDESIGNERPATH</tt> environment "
-        "variable to the <tt>python</tt> directory that is part of this "
-        "example.  This directory contains all the example Python plugin "
-        "modules.</p>"
-        "<p>It also sets the <tt>PYTHONPATH</tt> environment variable to the "
-        "<tt>widgets</tt> directory that is also part of this example.  This "
-        "directory contains the Python modules that implement the example "
-        "custom widgets.</p>"
-        "<p>All of the example custom widgets should then appear in "
-        "Designer's widget box in the <b>PyQt Examples</b> group.</p>")
+# QMessageBox.information(None, "PyQt Designer Plugins",
+#         "<p>This example will start Qt Designer when you click the <b>OK</b> "
+#         "button.</p>"
+#         "<p>Before doing so it sets the <tt>PYQTDESIGNERPATH</tt> environment "
+#         "variable to the <tt>python</tt> directory that is part of this "
+#         "example.  This directory contains all the example Python plugin "
+#         "modules.</p>"
+#         "<p>It also sets the <tt>PYTHONPATH</tt> environment variable to the "
+#         "<tt>widgets</tt> directory that is also part of this example.  This "
+#         "directory contains the Python modules that implement the example "
+#         "custom widgets.</p>"
+#         "<p>All of the example custom widgets should then appear in "
+#         "Designer's widget box in the <b>PyQt Examples</b> group.</p>")
 
 # Tell Qt Designer where it can find the directory containing the plugins and
 # Python where it can find the widgets.

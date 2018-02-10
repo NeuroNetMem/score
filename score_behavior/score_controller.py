@@ -10,7 +10,7 @@ from PyQt5 import QtWidgets
 
 from score_behavior.ObjectSpace.dialog_controller import TrialDialogController
 from score_behavior.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
-from score_behavior.ObjectSpace.analyzer import ObjectSpaceTrackingAnalyzer
+
 from score_behavior.global_defs import TrialState
 
 
@@ -67,10 +67,9 @@ class DeviceManager(QtCore.QObject):
             self.can_acquire = True
         self.splash_screen = None
         self.splash_screen_countdown = 0
-        self.analyzer = ObjectSpaceTrackingAnalyzer(self)  # TODO make this configurable
-        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        self.analyzer = None
+        self.dialog = None
         # noinspection PyUnresolvedReferences
-        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
         # initialize output
         self.video_out_filename = None
         self.out = None
@@ -84,7 +83,6 @@ class DeviceManager(QtCore.QObject):
         self._device = None
         self._device = self.init_device()
 
-        self.analyzer.init_tracker(self.frame_size)
         self.start_time = self.get_absolute_time()
         self.frame_no = 0
         self.last_frame = None
@@ -97,9 +95,6 @@ class DeviceManager(QtCore.QObject):
         self.track_end_x = 0
         self.track_end_y = 0
 
-        # noinspection PyArgumentList
-        # print("init_thread: ", int(QtCore.QThread.currentThreadId()))
-
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
@@ -109,6 +104,11 @@ class DeviceManager(QtCore.QObject):
         # noinspection PyUnresolvedReferences
         self.thread.started.connect(self.run)
         self.thread.start()
+
+    def set_analyzer(self, analyzer):
+        self.analyzer = analyzer
+        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
 
     @QtCore.pyqtSlot()
     def run(self):
@@ -179,13 +179,16 @@ class DeviceManager(QtCore.QObject):
                 continue
         self.video_out_filename = self.session.get_video_file_name_for_trial()
         self.open_files()
+        self.session.set_comments('')
+        trial_info = self.session.get_trial_info()
+        self.make_splash_screen(trial_info)
+        self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
 
+    def make_splash_screen(self, trial_info):
         width, height = self.frame_size
         self.splash_screen_countdown = self.fps * 3  # show the splash screen for three seconds
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
-        trial_info = self.session.get_trial_info()
-        self.session.set_comments('')
         font = cv2.FONT_HERSHEY_DUPLEX
         str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
@@ -202,7 +205,6 @@ class DeviceManager(QtCore.QObject):
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
-        self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
 
     def add_trial(self):
         if self.session:
@@ -270,36 +272,6 @@ class DeviceManager(QtCore.QObject):
     def yes_no_answer(self, i):
         self.yes_no_answer_signal.emit(i)
         self.yes_no = i
-
-    @QtCore.pyqtSlot(int, int)
-    def mouse_press_action(self, x, y):
-        self.track_start_x = x
-        self.track_start_y = y
-        self.analyzer.start_animal_init(x, y)
-
-    @QtCore.pyqtSlot(int, int)
-    def mouse_move_action(self, x, y):
-        if x == -1:
-            self.track_start_x = -1
-            self.track_start_y = -1
-            self.analyzer.start_animal_init(-1, -1)
-        else:
-            self.track_end_x = x
-            self.track_end_y = y
-            self.analyzer.update_animal_init(x, y)
-
-    @QtCore.pyqtSlot(int, int)
-    def mouse_release_action(self, x, y):
-        if self.track_start_x == -1:
-            return
-        if x == -1:
-            self.track_start_x = -1
-            self.track_start_y = -1
-            self.analyzer.start_animal_init(-1, -1)
-        else:
-            self.track_end_x = x
-            self.track_end_y = y
-            self.analyzer.complete_animal_init(x, y, frame_no=self.frame_no)
 
     def open_files(self):
         import os
@@ -410,8 +382,6 @@ class DeviceManager(QtCore.QObject):
             self.out = None
         if self.thread:
             self.thread.quit()
-        if self.analyzer:
-            self.analyzer.close()
 
     def finalize_trial(self):
         if self.trial_state not in (TrialState.IDLE, TrialState.READY):
@@ -505,6 +475,8 @@ class VideoDeviceManager(DeviceManager):
         # def query_frame_(self):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
+
+        import math
         if not self.capturing:
             return
         if not self.paused and self.acquiring:
@@ -514,7 +486,15 @@ class VideoDeviceManager(DeviceManager):
                 self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
                 self.last_frame = frame
                 self.frame_pos_signal.emit(self.frame_no)
-                self.time_pos_signal.emit(str(self.get_cur_time()))
+
+                ts = self.get_cur_time().total_seconds()
+                td1 = datetime.timedelta(seconds=math.floor(ts * 100) / 100)
+                tds = str(td1)
+                if '.' not in tds:
+                    tds = tds + '.00'
+                else:
+                    tds = tds[:-4]
+                self.time_pos_signal.emit(tds)
 
                 h, w, _ = frame.shape
                 if self.save_raw_video and self.raw_out and self.acquiring:
@@ -523,8 +503,8 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                if self.frame_no == 110:  # FIXME bad hack just for testing purposes, remove ASAP!
-                    self.analyzer.set_background(frame, frame_no=self.frame_no)
+                # if self.frame_no == 110:  # FIXME bad hack just for testing purposes, remove ASAP!
+                #     self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()
@@ -586,7 +566,7 @@ class VideoDeviceManager(DeviceManager):
         else:
             raise RuntimeError("Can't read frame!")
 
-    def add_animal(self, start, end, frame_no=None):
+    def add_animal(self, start, end, frame_no=None):  # TODO move to analyzer
         if frame_no is not None:
             self.move_to_frame(frame_no)
         self.analyzer.start_animal_init(start[0], start[1])

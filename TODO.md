@@ -26,4 +26,12 @@ the timer?
 
 - solve start from next trial crash, other corner cases
 
-    
+
+STRATEGY
+--------
+
+- Analyzer does the set background. Calculate background is communicated on control (use signal). Analyzer becomes QObject
+(probably needed for visualizations anyways)
+- Init animals uses the CoM of connected components
+- a reset animals button needed
+- 

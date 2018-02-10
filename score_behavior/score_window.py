@@ -8,6 +8,8 @@ from score_behavior.score_controller import VideoDeviceManager, CameraDeviceMana
 from score_behavior.video_control import VideoControlWidget
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.trial_dialog_ui import Ui_TrialDialog
+from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from score_behavior.tracking_controller.tracker_controller import TrackerController
 import logging
 
 
@@ -135,6 +137,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.setMenuBar(self.ui.menubar)
         self.session_file = None
         self._device = None
+        self._analyzer = None
         self.ui.actionQuit.triggered.connect(self.close_all)
         self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
@@ -183,9 +186,17 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
             self.device.error_signal.connect(self.error_and_close)
-            self.ui.cameraWidget.mouse_press_action_signal.connect(self.device.mouse_press_action)
-            self.ui.cameraWidget.mouse_move_action_signal.connect(self.device.mouse_move_action)
-            self.ui.cameraWidget.mouse_release_action_signal.connect(self.device.mouse_release_action)
+
+            self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+            self.ui.cameraWidget.mouse_press_action_signal.connect(self._analyzer.mouse_press_action)
+            self.ui.cameraWidget.mouse_move_action_signal.connect(self._analyzer.mouse_move_action)
+            self.ui.cameraWidget.mouse_release_action_signal.connect(self._analyzer.mouse_release_action)
+            self._analyzer.init_tracker(self.device.frame_size)
+
+            self.device.set_analyzer(self._analyzer)
+            self.tracker_controller = TrackerController(self._analyzer.tracker, parent=None)  # TODO make configurable
+            self.ui.sidebarWidget.layout().addWidget(self.tracker_controller.widget)
+
 
         self.ui.cameraWidget.set_device(self.device)
 
@@ -263,6 +274,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         import sys
         if self.device:
             self.device.cleanup()
+        if self._analyzer:
+            self._analyzer.close()
         sys.exit()
 
     @QtCore.pyqtSlot()
@@ -378,6 +391,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         control_widget.ui.timeSlider.setEnabled(True)
         control_widget.ui.timeSlider.setMinimum(0)
         control_widget.ui.timeSlider.setMaximum(last_frame)
+        control_widget.ui.timeSlider.setTickInterval(int(last_frame/10))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
         self.device.video_finished_signal.connect(self.video_finished)  # TODO still needed?
