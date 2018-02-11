@@ -4,6 +4,7 @@ import numpy as np
 import time
 import datetime
 import warnings
+import logging
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -12,6 +13,8 @@ from score_behavior.ObjectSpace.dialog_controller import TrialDialogController
 from score_behavior.ObjectSpace.session_manager import VideoSessionManager, LiveSessionManager
 
 from score_behavior.global_defs import TrialState
+
+logger = logging.getLogger(__name__)
 
 
 def find_how_many_cameras():
@@ -95,6 +98,13 @@ class DeviceManager(QtCore.QObject):
         self.track_end_x = 0
         self.track_end_y = 0
 
+    def set_analyzer(self, analyzer):
+        self.analyzer = analyzer
+        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        # noinspection PyUnresolvedReferences
+        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
+
+    # Threading support
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
@@ -105,21 +115,11 @@ class DeviceManager(QtCore.QObject):
         self.thread.started.connect(self.run)
         self.thread.start()
 
-    def set_analyzer(self, analyzer):
-        self.analyzer = analyzer
-        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
-        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
-
     @QtCore.pyqtSlot()
     def run(self):
-        # noinspection PyArgumentList
-        # print("running in thread: ", QtCore.QThread.currentThread(), " id: ", int(QtCore.QThread.currentThreadId()))
-        # noinspection PyCallByClass
-        # self._device = self.init_device()
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
         self._timer.setInterval(self.interval)
-        # self._timer.setInterval(250)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
         self._timer.start()
@@ -205,7 +205,6 @@ class DeviceManager(QtCore.QObject):
         tpt = (width - t_size[0]) // 2, tpt[1] + int((t_size[1]+baseline)*1.5)
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
 
-
     def add_trial(self):
         if self.session:
             self.session.add_trial()
@@ -216,6 +215,19 @@ class DeviceManager(QtCore.QObject):
         if self.session:
             self.session.skip_trial()
             self.dialog.set_scheme(self.session.get_scheme_trial_info())
+
+    def finalize_trial(self):
+        if self.trial_state not in (TrialState.IDLE, TrialState.READY):
+            if self.trial_state == TrialState.ONGOING:
+                t = self.get_cur_time()
+                ts = t.seconds + 1.e-6 * t.microseconds
+                self.session.set_event(ts, self.frame_no, 'TR0')
+                self.trial_state = TrialState.COMPLETED
+                self.analyzer.process_message('TR0')
+            self.close_files()
+            self.analyze_trial()
+            self.session.set_trial_finished()
+            self.trial_state = TrialState.IDLE
 
     @QtCore.pyqtSlot()
     def start_acquisition(self):
@@ -316,10 +328,11 @@ class DeviceManager(QtCore.QObject):
             self.raw_out = cv2.VideoWriter(self.make_raw_filename(filename), fourcc, self.fps, self.frame_size)
         if self.out.isOpened():
             self.can_acquire = True
-            print("Success")
+            logger.info("successfully opened video out file {}".format(filename))
         else:
             import warnings
             warnings.warn("Can't open output file!!")
+            logger.warning("Can't open output file {}".format(filename))
         self.video_file_changed_signal.emit("Video: " + os.path.basename(filename))
 
     def close_files(self):
@@ -382,20 +395,6 @@ class DeviceManager(QtCore.QObject):
             self.out = None
         if self.thread:
             self.thread.quit()
-
-    def finalize_trial(self):
-        if self.trial_state not in (TrialState.IDLE, TrialState.READY):
-            if self.trial_state == TrialState.ONGOING:
-                t = self.get_cur_time()
-                ts = t.seconds + 1.e-6 * t.microseconds
-                self.session.set_event(ts, self.frame_no, 'TR0')
-                self.trial_state = TrialState.COMPLETED
-                self.analyzer.process_message('TR0')
-            self.close_files()
-            self.analyze_trial()
-            self.session.set_trial_finished()
-            self.trial_state = TrialState.IDLE
-
     # noinspection PyUnresolvedReferences
     def analyze_trial(self):
         self.session.analyze_trial()
@@ -467,6 +466,18 @@ class VideoDeviceManager(DeviceManager):
     def video_last_frame(self):
         return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
 
+    @staticmethod
+    def timedelta_to_string(td):
+        import math
+        ts = td.total_seconds()
+        td1 = datetime.timedelta(seconds=math.floor(ts * 100) / 100)
+        tds = str(td1)
+        if '.' not in tds:
+            tds = tds + '.00'
+        else:
+            tds = tds[:-4]
+        return tds
+
     @QtCore.pyqtSlot()
     def query_frame(self):
         #     import cProfile  #  this is for profiling only
@@ -476,7 +487,6 @@ class VideoDeviceManager(DeviceManager):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
 
-        import math
         if not self.capturing:
             return
         if not self.paused and self.acquiring:
@@ -487,13 +497,8 @@ class VideoDeviceManager(DeviceManager):
                 self.last_frame = frame
                 self.frame_pos_signal.emit(self.frame_no)
 
-                ts = self.get_cur_time().total_seconds()
-                td1 = datetime.timedelta(seconds=math.floor(ts * 100) / 100)
-                tds = str(td1)
-                if '.' not in tds:
-                    tds = tds + '.00'
-                else:
-                    tds = tds[:-4]
+                tds = self.timedelta_to_string(self.get_cur_time())
+
                 self.time_pos_signal.emit(tds)
 
                 h, w, _ = frame.shape
@@ -503,8 +508,6 @@ class VideoDeviceManager(DeviceManager):
 
                 if self.out and self.acquiring:
                     self.out.write(frame)
-                # if self.frame_no == 110:  # FIXME bad hack just for testing purposes, remove ASAP!
-                #     self.analyzer.set_background(frame, frame_no=self.frame_no)
                 self.new_frame.emit(frame)
             else:
                 self.video_finished_signal.emit()
@@ -597,6 +600,7 @@ class VideoDeviceManager(DeviceManager):
     def speed_action(self, i):
         speed = float(self.speed_possible[i])
         self.set_speed(speed)
+        logger.debug("changed speed to {}".format(speed))
 
 
 class CameraDeviceManager(DeviceManager):

@@ -48,6 +48,7 @@ class CVVideoWidget(QtWidgets.QWidget):
             # self.setMinimumSize(w, h)
             # self.setMaximumSize(w, h)
             self._camera_device.size_changed_signal.connect(self.size_changed)
+            self.updateGeometry()
 
     @QtCore.pyqtSlot()
     def size_changed(self):
