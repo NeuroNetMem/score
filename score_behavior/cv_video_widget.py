@@ -86,6 +86,7 @@ class CVVideoWidget(QtWidgets.QWidget):
         painter.drawImage(QtCore.QPoint(0, 0), OpenCVQImage(self._frame))
 
     def keyPressEvent(self, event):
+        self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         keymap = self._camera_device.key_interface()
         if not event.isAutoRepeat() and event.key() in keymap:
             msg = keymap[event.key()] + '1'
@@ -93,6 +94,7 @@ class CVVideoWidget(QtWidgets.QWidget):
         event.accept()
 
     def keyReleaseEvent(self, event):
+        self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         keymap = self._camera_device.key_interface()
         if event.key() in keymap:
             msg = keymap[event.key()] + '0'

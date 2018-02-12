@@ -5,6 +5,7 @@ import time
 import datetime
 import warnings
 import logging
+from enum import Enum
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -27,16 +28,25 @@ def find_how_many_cameras():
         v.release()
     return 1
 
-
+# TODO timestamps don't flow in camera
 # the camera model for the Camera acquisition
 class DeviceManager(QtCore.QObject):
+    class State(Enum):
+        NOT_READY = 1
+        READY = 2
+        READY_FOR_TRIAL = 3
+        ACQUIRING = 4
+        RECORDING = 5
+
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
-    can_acquire_signal = QtCore.pyqtSignal(bool, name="CameraDevice.can_acquire_signal")
-    is_acquiring_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_acquiring_signal")
-    is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
+    # can_acquire_signal = QtCore.pyqtSignal(bool, name="CameraDevice.can_acquire_signal")
+    # is_acquiring_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_acquiring_signal")
+    # is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
+    state_changed_signal = QtCore.pyqtSignal(State, name="CameraDevice.state_changed_signal")
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
     session_set_signal = QtCore.pyqtSignal(bool, name="CameraDevice.session_set")
     dialog_trigger_signal = QtCore.pyqtSignal(name="CameraDevice.dialog_trigger_signal")
+    # only to set the label on the window
     video_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_file_changed_signal')
     trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
@@ -58,16 +68,17 @@ class DeviceManager(QtCore.QObject):
         self.mirrored = False
         self.rotate_angle = 0
         self.scale = float(self.scales_possible[self.scale_init])
-        self._can_acquire = False
-        self._acquiring = False
-        self._paused = False
+        self._state = self.State.NOT_READY
+        # self._can_acquire = False  # TODO remove
+        # self._acquiring = False
+        # self._paused = False
         self._timer = None
         self.interval = 0
         self.session = None
         if session_file:
             self.set_session(session_file)
         else:
-            self.can_acquire = True
+            self._state = self.State.READY
         self.splash_screen = None
         self.splash_screen_countdown = 0
         self.analyzer = None
@@ -83,14 +94,14 @@ class DeviceManager(QtCore.QObject):
         self.thread = None
         # this flag to close the manager
         self.to_release = False
-        self._device = None
+        self._device = None  # the underlying video source device
         self._device = self.init_device()
 
-        self.start_time = self.get_absolute_time()
+        self.start_time = self.get_absolute_time()  # TODO override in subclasses
         self.frame_no = 0
         self.last_frame = None
 
-        self.trial_state = TrialState.IDLE
+        self._trial_state = TrialState.IDLE
         self.capturing = False
 
         self.track_start_x = -1
@@ -101,6 +112,7 @@ class DeviceManager(QtCore.QObject):
     def set_analyzer(self, analyzer):
         self.analyzer = analyzer
         self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        # TODO dialog should be handled by analyzer
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
 
@@ -108,7 +120,7 @@ class DeviceManager(QtCore.QObject):
     def init_thread(self):
         # throw it into a different thread
         self.thread = QtCore.QThread()
-        # print("creating thread: ", self.thread, " id: ")
+        logger.debug("creating thread. id: {}".format(self.thread))
         self.moveToThread(self.thread)
         self.capturing = True
         # noinspection PyUnresolvedReferences
@@ -119,6 +131,7 @@ class DeviceManager(QtCore.QObject):
     def run(self):
         self._timer = QtCore.QTimer()
         self.interval = int(1.e3 / self.fps)
+        logger.debug("starting timer with interval {}".format(self.interval))
         self._timer.setInterval(self.interval)
         # noinspection PyUnresolvedReferences
         self._timer.timeout.connect(self.query_frame)
@@ -135,35 +148,59 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot(int)
     def change_scale(self, i):
         self.scale = float(self.scales_possible[i])
+        logger.debug("Scale changed to {}".format(self.scale))
         self.size_changed_signal.emit()
 
+    # @property
+    # def can_acquire(self):
+    #     # this means that we have a input and output devices ready
+    #     return self._can_acquire
+    #
+    # @can_acquire.setter
+    # def can_acquire(self, val):
+    #     self._can_acquire = val
+    #     self.can_acquire_signal.emit(val)
+
     @property
-    def can_acquire(self):
-        # this means that we have a input and output devices ready
-        return self._can_acquire
+    def state(self):
+        return self._state
 
-    @can_acquire.setter
-    def can_acquire(self, val):
-        self._can_acquire = val
-        self.can_acquire_signal.emit(val)
-
-    @property
-    def acquiring(self):
-        # this means that we are acquiring
-        #  TODO verify if it can be merged with paused
-        return self._acquiring
-
-    @acquiring.setter
-    def acquiring(self, val):
-        if val:
+    @state.setter
+    def state(self, val):
+        self._state = val
+        if val == self.State.ACQUIRING:
             self.start_time = self.get_absolute_time()
             self.frame_no = 0
-        self._acquiring = val
-        self.is_acquiring_signal.emit(val)
+        self.state_changed_signal.emit(val)
+        logger.debug("State changed to {}".format(self.state))
+
+    @property
+    def trial_state(self):
+        return self._trial_state
+
+    @trial_state.setter
+    def trial_state(self, val):
+        self._trial_state = val
+        logger.debug("Trial state changed to {}".format(self.trial_state))
+
+    # @property  # TODO remove
+    # def acquiring(self):
+    #     # this means that we are acquiring
+    #
+    #     return self._acquiring
+    #
+    # @acquiring.setter
+    # def acquiring(self, val):
+    #     if val:
+    #         self.start_time = self.get_absolute_time()
+    #         self.frame_no = 0
+    #     self._acquiring = val
+    #     self.is_acquiring_signal.emit(val)
 
     def trial_setup(self):
         scheme = self.session.get_scheme_trial_info()
 
+        logger.debug("starting setting up trial")
         self.dialog.set_scheme(scheme)
 
         while True:
@@ -183,6 +220,7 @@ class DeviceManager(QtCore.QObject):
         trial_info = self.session.get_trial_info()
         self.make_splash_screen(trial_info)
         self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
+        logger.debug("Finished setting up Trial {}".format(trial_info['sequence_nr']))
 
     def make_splash_screen(self, trial_info):
         width, height = self.frame_size
@@ -207,17 +245,20 @@ class DeviceManager(QtCore.QObject):
 
     def add_trial(self):
         if self.session:
+            logger.debug("Adding trial")
             self.session.add_trial()
             self.dialog.set_scheme(self.session.get_scheme_trial_info())
             self.dialog.set_readonly(False)
 
     def skip_trial(self):
         if self.session:
+            logger.debug("Skipping trial")
             self.session.skip_trial()
             self.dialog.set_scheme(self.session.get_scheme_trial_info())
 
     def finalize_trial(self):
         if self.trial_state not in (TrialState.IDLE, TrialState.READY):
+            logger.debug("Finalizing trial")
             if self.trial_state == TrialState.ONGOING:
                 t = self.get_cur_time()
                 ts = t.seconds + 1.e-6 * t.microseconds
@@ -230,36 +271,44 @@ class DeviceManager(QtCore.QObject):
             self.trial_state = TrialState.IDLE
 
     @QtCore.pyqtSlot()
-    def start_acquisition(self):
+    def start_trial_acquisition(self):
+        if self.state == self.State.NOT_READY:
+            return
         if self.session:
             self.trial_setup()
-        if self.can_acquire:
-            # 1. ask for confirmation of trial parameters
-            # 2. make up new video file
-            # 3. make up splash screen
-            if self.acquiring:  # must be paused
-                self.paused = False
-                self.is_acquiring_signal.emit(True)
-            else:
-                self.acquiring = True
-                if not self.capturing:
-                    self.capturing = True
-            self.trial_state = TrialState.READY
+        # 1. ask for confirmation of trial parameters
+        # 2. make up new video file
+        # 3. make up splash screen
+
+        self.state = self.State.ACQUIRING
+        self.trial_state = TrialState.READY
+
+    @QtCore.pyqtSlot()
+    def stop_trial_acquisition(self):
+        logging.debug("Ending trial acquisition")
+        if self.session:
+            self.finalize_trial()
+        self.state = self.State.READY
+
 
     @QtCore.pyqtSlot()
     def stop_acquisition(self):
-        self.acquiring = False
+        logging.debug("Stopping acquisition")
+
+        self.state = self.State.NOT_READY
         if self.session:
             self.session.close()
             self.session = None
 
     @QtCore.pyqtSlot(bool)
     def set_mirror(self, mirrored):
+        logging.debug("setting mirrored to {}".format(mirrored))
         self.mirrored = mirrored
 
     @QtCore.pyqtSlot(int)
     def set_rotate(self, i):
         self.rotate_angle = self.rotate_options[i]
+        logger.debug("Setting rotate to {}".format(self.rotate_angle))
         self.size_changed_signal.emit()
 
     @QtCore.pyqtSlot(bool)
@@ -287,13 +336,16 @@ class DeviceManager(QtCore.QObject):
 
     def open_files(self):
         import os
-
+        # TODO this needs to be thoroguhly debugged
+        logger.info("Attempting to open video file {} for writing ".format(self.video_out_filename))
         done = False
         filename = ''
         while not done:
+            # TODO why in a loop, why can't we have a second file name that is guaranteed not to exist?
             filename = self.video_out_filename
             print("opening output file: ", filename, "...")
             if os.path.exists(filename):
+                logger.info("file {} exists".format(self.video_out_filename))
                 self.yes_no_question_signal.emit("File " + filename + " exists, shall I start from the next trial ?")
                 loop = QtCore.QEventLoop()
                 # noinspection PyUnresolvedReferences
@@ -301,7 +353,7 @@ class DeviceManager(QtCore.QObject):
                 loop.exec_()
                 if self.yes_no:
                     self.session.skip_sequence_number()
-                    self.video_out_filename = self.video_out_filename = self.session.get_video_file_name_for_trial()
+                    self.video_out_filename = self.session.get_video_file_name_for_trial()
                 else:
                     self.error_signal.emit('Cannot continue')
             else:
@@ -327,10 +379,11 @@ class DeviceManager(QtCore.QObject):
                 self.raw_out = None
             self.raw_out = cv2.VideoWriter(self.make_raw_filename(filename), fourcc, self.fps, self.frame_size)
         if self.out.isOpened():
-            self.can_acquire = True
+            self.state = self.State.READY
             logger.info("successfully opened video out file {}".format(filename))
         else:
             import warnings
+            self.state = self.State.NOT_READY
             warnings.warn("Can't open output file!!")
             logger.warning("Can't open output file {}".format(filename))
         self.video_file_changed_signal.emit("Video: " + os.path.basename(filename))
@@ -342,6 +395,7 @@ class DeviceManager(QtCore.QObject):
         if self.raw_out:
             self.raw_out.release()
             self.raw_out = None
+        logger.debug("closed video files for trial")
 
     @staticmethod
     def make_raw_filename(video_filename):
@@ -356,7 +410,7 @@ class DeviceManager(QtCore.QObject):
         pass  # pure virtual function
 
     def add_timestamp_string(self, frame):
-        if self.acquiring and self.display_time:
+        if self.state == self.State.ACQUIRING and self.display_time:
             h, w, _ = frame.shape
             cur_time = str(self.get_cur_time())[:-4]
             font = cv2.FONT_HERSHEY_DUPLEX
@@ -380,13 +434,14 @@ class DeviceManager(QtCore.QObject):
     @QtCore.pyqtSlot()
     def cleanup(self):
 
-        self.can_acquire = False
+        self.state = self.State.NOT_READY
         self.to_release = True
         if self.thread:
             self.thread.wait()
+            logger.debug("Acquisition thread exited")
 
     def release(self):
-        print("releasing camera and stopping")
+        logger.info("releasing acquisition device and stopping")
         time.sleep(0.5)
         # if self._device:
         #     self._device.release()
@@ -395,24 +450,25 @@ class DeviceManager(QtCore.QObject):
             self.out = None
         if self.thread:
             self.thread.quit()
+
     # noinspection PyUnresolvedReferences
     def analyze_trial(self):
         self.session.analyze_trial()
 
-    @QtCore.pyqtSlot()
-    def set_paused(self):
-        if self.session:
-            self.finalize_trial()
-        self.paused = True
+    # @QtCore.pyqtSlot()
+    # def set_paused(self):
+    #     if self.session:
+    #         self.finalize_trial()
+    #     self.paused = True
 
-    @property
-    def paused(self):
-        return self._paused
-
-    @paused.setter
-    def paused(self, p):
-        self.is_paused_signal.emit(p)
-        self._paused = p
+    # @property
+    # def paused(self):
+    #     return self._paused
+    #
+    # @paused.setter
+    # def paused(self, p):
+    #     self.is_paused_signal.emit(p)
+    #     self._paused = p
 
     @property
     def frame_size(self):
@@ -424,7 +480,7 @@ class DeviceManager(QtCore.QObject):
 
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
-
+        logger.debug("Got message {}".format(msg))
         if self.session and self.trial_state == TrialState.IDLE:
             return
         if self.analyzer:
@@ -460,6 +516,7 @@ class VideoDeviceManager(DeviceManager):
         # noinspection PyArgumentList
         cd = cv2.VideoCapture(self.video_file)
         if not cd.isOpened():
+            logger.error("Could not open video file {}".format(self.video_file))
             raise RuntimeError("Could not open video file {}".format(self.video_file))
         return cd
 
@@ -487,31 +544,34 @@ class VideoDeviceManager(DeviceManager):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
 
-        if not self.capturing:
+        if self.state == self.State.NOT_READY:
             return
-        if not self.paused and self.acquiring:
-            ret, frame = self._device.read()
 
-            if ret:
-                self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
-                self.last_frame = frame
-                self.frame_pos_signal.emit(self.frame_no)
+        ret, frame = self._device.read()
 
-                tds = self.timedelta_to_string(self.get_cur_time())
+        if ret:
+            self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
+            self.last_frame = frame
+            self.frame_pos_signal.emit(self.frame_no)
 
-                self.time_pos_signal.emit(tds)
+            tds = self.timedelta_to_string(self.get_cur_time())
 
-                h, w, _ = frame.shape
-                if self.save_raw_video and self.raw_out and self.acquiring:
+            self.time_pos_signal.emit(tds)
+
+            h, w, _ = frame.shape
+
+            if self.state == self.State.ACQUIRING:
+                if self.save_raw_video and self.raw_out:
                     self.raw_out.write(frame)
-                self.process_frame(frame)
+                self.process_frame(frame)  # should it be called only when recording?
 
-                if self.out and self.acquiring:
+                if self.out:
                     self.out.write(frame)
-                self.new_frame.emit(frame)
-            else:
-                self.video_finished_signal.emit()
-                self.paused = True
+
+            self.new_frame.emit(frame)
+        else:
+            self.video_finished_signal.emit()
+            self.state = self.State.NOT_READY
 
         if self.to_release:
             self.release()
@@ -541,17 +601,20 @@ class VideoDeviceManager(DeviceManager):
             init_trial = 1  # TODO make it a choice for the user
             try:
                 self.session = VideoSessionManager(filename, initial_trial=init_trial, min_free_disk_space=25)
+                logger.debug("session opened from file {}".format(filename))
             except RuntimeError as e:
+                logger.error("Could not open session from file {}. RunTimeError {}".format(filename, str(e)))
                 self.error_signal.emit(str(e))
 
             self.session_set_signal.emit(True)
-            self.can_acquire = True
+            self.state = self.State.READY
         except ValueError as e:
+            logger.error("Could not open session from file {}. ValueError {}".format(filename, str(e)))
             self.session = None
             self.session_set_signal.emit(False)
             import warnings
             warnings.warn(str(e))
-            self.can_acquire = False
+            self.state = self.State.NOT_READY
 
     def move_to_frame(self, frame_no):
         if frame_no < self.frame_no:
@@ -610,7 +673,7 @@ class CameraDeviceManager(DeviceManager):
         self.camera_id = camera_id
         super(CameraDeviceManager, self).__init__(parent=parent, session_file=session_file)
         self.init_thread()
-        self.paused = False
+        self.state = self.State.READY
 
     def init_device(self):
         # print(cv2.getBuildInformation())
@@ -618,23 +681,23 @@ class CameraDeviceManager(DeviceManager):
         cd = cv2.VideoCapture(0)
         # cd = cv2.VideoCapture(self.camera_id)
         if not cd.isOpened():
+            logger.error("Could not initialize camera id {}".format(self.camera_id))
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
         return cd
 
     @QtCore.pyqtSlot()
-    def query_frame_(self):
+    def query_frame(self):
         if self.to_release:
             self.release()
-        if not self.capturing:
-            return
-        if not self.paused:
+        if self.state in (self.State.READY, self.State.ACQUIRING):
             if self.splash_screen_countdown:
                 frame = self.splash_screen
                 ret = True
                 if self.splash_screen_countdown == 1:
                     self.trial_state = TrialState.READY
                 else:
-                    self.trial_state = TrialState.COMPLETED
+                    pass
+                    # self.trial_state = TrialState.COMPLETED
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()
@@ -646,14 +709,18 @@ class CameraDeviceManager(DeviceManager):
                         frame = cv2.flip(frame, 1)
             if ret:
                 self.frame_no += 1
-                if self.save_raw_video and self.raw_out and self.acquiring:
-                    self.raw_out.write(frame)
-                if self.splash_screen_countdown == 0:
-                    self.process_frame(frame)
+                if self.state == self.State.ACQUIRING:
+                    if self.save_raw_video and self.raw_out:
+                        self.raw_out.write(frame)
+                    if self.splash_screen_countdown == 0:
+                        self.process_frame(frame)  # TODO shall it be called only when acquiring?
 
-                if self.out and self.acquiring:
-                    self.out.write(frame)
+                    if self.out:
+                        self.out.write(frame)
                 self.new_frame.emit(frame)
+            else:
+                logger.info("Camera lost")
+                raise RuntimeError("Camera Lost")
             # else:
                 #  notify that camera is not acquiring ?
                 # self.video_finished_signal.emit()
@@ -693,15 +760,19 @@ class CameraDeviceManager(DeviceManager):
                                                            1, min=1, flags=QtCore.Qt.WindowFlags())
             if not ok:
                 init_trial = 1
+            logger.debug("Attempting to start camera session from file {} and from trial {}".format(filename,
+                                                                                                     init_trial))
             try:
                 self.session = LiveSessionManager(filename, initial_trial=init_trial, min_free_disk_space=25)
             except RuntimeError as e:
+                logger.error("Could not start session from file {}. RunTimeError {}".format(filename, str(e)))
                 self.error_signal.emit(str(e))
 
             self.session_set_signal.emit(True)
-            self.can_acquire = True
+            self.state = self.State.READY
 
         except ValueError as e:
+            logger.error("Could not start session from file {}. ValueError {}".format(filename, str(e)))
             self.session = None
             self.session_set_signal.emit(False)
             import warnings

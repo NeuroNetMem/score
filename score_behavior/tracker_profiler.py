@@ -41,7 +41,7 @@ class ProfilerMainWindow(QtWidgets.QMainWindow):
         self.cameraWidget.set_device(self.device)
         self.device.acquire_background(background_frame)
         self.device.add_animal(animal_start, animal_end, add_animal_frame)
-        self.device.start_acquisition()
+        self.device.start_trial_acquisition()
 
 
 def _main():

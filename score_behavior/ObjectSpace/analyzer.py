@@ -35,6 +35,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
 
     def process_message(self, msg):
+        logger.debug("Analyzer got message {}".format(msg))
         t = self.device.get_cur_time()
         if msg == 'TR0':
             return

@@ -258,7 +258,7 @@ class Animal:
         self.prev_centroid = self.centroid
         self.speed = geometry.Point(0., 0.)
         self.speed_alpha = 0.92
-        logger.debug("setting centroid at {}, {}".format(self.centroid[0], self.centroid[1]))
+        logger.log(5, "setting centroid at {}, {}".format(self.centroid[0], self.centroid[1]))
         self.scaled_max_body_length = config.max_body_length * self.host.scale_factor
         self.scaled_max_width = self.config.max_body_width * self.host.scale_factor
         self.scaled_min_width = self.config.min_body_width * self.host.scale_factor
@@ -320,11 +320,11 @@ class Animal:
 
         debug = None
         self.prev_centroid = self.centroid
-        logger.debug("centroids are " + str(centroids))
+        logger.log(5, "centroids are " + str(centroids))
         self.centroid = self.find_closest_centroid(centroids)
         self.speed = self.speed_alpha * self.speed + \
         (1. - self.speed_alpha) * (self.centroid - self.prev_centroid)
-        logger.debug("speed is {}".format(np.linalg.norm(self.speed)))
+        logger.log(5, "speed is {}".format(np.linalg.norm(self.speed)))
         matrix = raw_matrix.astype(np.float)
         matrix = matrix - 100.
         # matrix = matrix - thr
@@ -332,7 +332,7 @@ class Animal:
 
         # setting up the alternative pos    tures
         postures = self.generate_postures()
-        logger.debug("generated {} postures".format(len(postures)))
+        logger.log(5, "generated {} postures".format(len(postures)))
         mask_size = 50
         mask_half = mask_size / 2
 
@@ -567,7 +567,7 @@ class Tracker:
 
     def add_animal(self, start_x, start_y, end_x, end_y, config=Animal.Configuration()):
         """add an animal to the list of animals"""
-        logger.debug("Adding animal")
+        logger.log(5, "Adding animal")
         self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, self.centroids, config))
         if len(self.animals) == self.max_num_animals:
             self.state = self.State.TRACKING
@@ -597,7 +597,7 @@ class Tracker:
 
     def track(self, frame, frame_time=0):
         """track one frame"""
-        logger.debug("start tracking {} animals".format(len(self.animals)))
+        logger.log(5, "start tracking {} animals".format(len(self.animals)))
         if self.background_countdown > 0:
             if self.background_buffer is None:
                 self.background_buffer = np.zeros((self.config.skeletonization_res_height,
@@ -685,7 +685,7 @@ class Tracker:
     def draw_animals(self, frame):
 
         for ap in self.get_animal_positions():
-            logger.debug("drawing animal")
+            logger.log(5, "drawing animal")
             white = (255, 255, 255)
             green = (0, 255, 0)
             # red = (255, 0, 0)
@@ -768,4 +768,4 @@ class Tracker:
                              (int(arrow_line1[0]), int(arrow_line1[1])), white)
                     cv2.line(frame, (int(h[0]), int(h[1])),
                              (int(arrow_line2[0]), int(arrow_line2[1])), white)
-        logger.debug("finished drawing animals")
+        logger.log(5, "finished drawing animals")
