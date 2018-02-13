@@ -215,6 +215,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.set_analyzer(self._analyzer)
             tracker_controller = TrackerController(self._analyzer.tracker, parent=None)  # TODO this should go in analyzer
             self.ui.sidebarWidget.layout().addWidget(tracker_controller.widget)
+            self.setFocus()
             self.log.info('Setting device to {}'.format(dev))
         else:
             self.log.info("resetting acquisition device")
@@ -463,6 +464,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         control_widget.ui.speedComboBox.currentIndexChanged.connect(self.device.speed_action)
 
         self.ui.sidebarWidget.layout().addWidget(control_widget)
+        self.setFocus()
 
     def keyPressEvent(self, event):
         self.log.debug("key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))

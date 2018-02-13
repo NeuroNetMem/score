@@ -58,7 +58,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
             else:
                 self.obj_state[msg[:-1]] = 0
 
-        if self.device.acquiring and self.device.capturing:
+        if self.device.state == self.device.State.ACQUIRING:
             ts = t.seconds + 1.e-6 * t.microseconds
             if self.device.session:
                 self.device.session.set_event(ts, self.device.frame_no, msg)
