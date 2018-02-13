@@ -245,11 +245,3 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
     def close(self):
         self.events.to_csv(self.log_file)
         self.trials_results.to_csv(self.result_file)
-
-
-class VideoSessionManager(SessionManager):
-    pass
-
-
-class LiveSessionManager(SessionManager):
-    pass

@@ -2,10 +2,11 @@ import cv2
 
 from PyQt5 import QtCore
 
-from score_behavior.analyzer import FrameAnalyzer
-from score_behavior.global_defs import TrialState
+from score_behavior.score_analyzer import FrameAnalyzer
 
 import logging
+
+from .dialog_controller import TrialDialogController
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +21,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                   'UR': (lambda w, h: ((w - 8, 8), (int(w * 0.7), int(h * 0.3)))),
                   'LL': (lambda w, h: ((8, h - 8), (int(w * 0.3), int(h * 0.7)))),
                   'LR': (lambda w, h: ((w - 8, h - 8), (int(w * 0.7), int(h * 0.7))))}
+    dialog_trigger_signal = QtCore.pyqtSignal(name="ObjectSpaceFrameAnalyzer.dialog_trigger_signal")
 
     def __init__(self, device, parent=None):
         super(ObjectSpaceFrameAnalyzer, self).__init__(device, parent=parent)
@@ -30,6 +32,9 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.track_start_y = -1
         self.track_end_x = -1
         self.track_end_y = -1
+        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        # noinspection PyUnresolvedReferences
+        self.dialog_trigger_signal.connect(self.dialog.start_dialog)
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
@@ -39,19 +44,18 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         t = self.device.get_cur_time()
         if msg == 'TR0':
             return
-        if msg == 'TR1' and self.device.trial_state != TrialState.COMPLETED:
+        if msg == 'TR1' and self.device.trial_state != self.TrialState.FINISHED:
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
             print("trial_on: ", trial_on)
             msg = 'TR' + str(trial_on)
             if trial_on:
-                self.device.trial_state = TrialState.ONGOING
-                if self.device.session:
-                    self.device.start_time = self.device.get_absolute_time()
+                self.device.trial_state = self.TrialState.ONGOING
+                self.device.start_time = self.device.get_absolute_time()
             else:
-                self.device.trial_state = TrialState.COMPLETED
+                self.trial_state = self.TrialState.COMPLETED
         else:
-            if self.device.session and self.device.trial_state != TrialState.ONGOING:
+            if self.trial_state != self.TrialState.ONGOING:
                 return
             if msg[:-1] in self.rect_coord and msg[-1] == '1':
                 self.obj_state[msg[:-1]] = 1
@@ -60,10 +64,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
 
         if self.device.state == self.device.State.ACQUIRING:
             ts = t.seconds + 1.e-6 * t.microseconds
-            if self.device.session:
-                self.device.session.set_event(ts, self.device.frame_no, msg)
-            elif self.csv_out:
-                self.csv_out.write("{},{},{}\n".format(ts, self.device.frame_no, msg))
+            self.session.set_event(ts, self.device.frame_no, msg)
 
     def process_frame(self, frame):
         h, w, _ = frame.shape
@@ -104,4 +105,3 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
             self.track_end_x = x
             self.track_end_y = y
             self.complete_animal_init(x, y, frame_no=self.device.frame_no)
-

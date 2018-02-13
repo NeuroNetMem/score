@@ -12,12 +12,11 @@ from score_behavior import GIT_VERSION
 
 # noinspection PyUnresolvedReferences
 import score_behavior.obj_rc
-from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager, DeviceManager
-from score_behavior.video_control import VideoControlWidget
-from score_behavior.score_window_ui import Ui_MainWindow
-from score_behavior.trial_dialog_ui import Ui_TrialDialog
-from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
-from score_behavior.tracking_controller.tracker_controller import TrackerController
+from .score_controller import VideoDeviceManager, CameraDeviceManager, DeviceManager
+from .video_control import VideoControlWidget
+from .score_window_ui import Ui_MainWindow
+from .trial_dialog_ui import Ui_TrialDialog
+from .ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -173,7 +172,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._device = dev
         if dev:
             # noinspection PyUnresolvedReferences
-            self.key_action.connect(self._device.obj_state_change)
             self.ui.cameraWidget.key_action.connect(self._device.obj_state_change)
             self.ui.mirroredButton.setEnabled(True)
             self.ui.mirroredButton.toggled.connect(self.device.set_mirror)
@@ -193,14 +191,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # self.device.is_acquiring_signal.connect(self.acquisition_started_stopped)
             # self.device.is_paused_signal.connect(self.has_paused)
             self.device.size_changed_signal.connect(self.video_size_changed)
-            # self.device.session_set_signal.connect(self.session_was_set)
             self.device.video_file_changed_signal.connect(self.ui.destLabel.setText)
             self.device.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
             self.device.error_signal.connect(self.error_and_close)
             self.device.yes_no_question_signal.connect(self.yes_no_question)
-            # self.ui.commentsButton.clicked.connect(self.get_comments)  # FIXME move to session manager
-            # noinspection PyUnresolvedReferences
-            self.comments_received.connect(self.device.set_comments)
 
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
@@ -211,36 +205,23 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.cameraWidget.mouse_press_action_signal.connect(self._analyzer.mouse_press_action)
             self.ui.cameraWidget.mouse_move_action_signal.connect(self._analyzer.mouse_move_action)
             self.ui.cameraWidget.mouse_release_action_signal.connect(self._analyzer.mouse_release_action)
-
+            self.ui.cameraWidget.key_action.connect(self._analyzer.obj_state_change)
             self.device.set_analyzer(self._analyzer)
-            tracker_controller = TrackerController(self._analyzer.tracker, parent=None)  # TODO this should go in analyzer
-            self.ui.sidebarWidget.layout().addWidget(tracker_controller.widget)
+            self.key_action.connect(self._analyzer.obj_state_change)
+
+            if self._analyzer.tracker:
+                self.ui.sidebarWidget.layout().addWidget(self._analyzer.tracker_controller.widget)
             self.setFocus()
             self.log.info('Setting device to {}'.format(dev))
         else:
             self.log.info("resetting acquisition device")
 
-
         self.ui.cameraWidget.set_device(self.device)
-
-    @QtCore.pyqtSlot(bool)
-    def session_was_set(self, s):  # TODO can it be subsumed in the state change?
-        if s:
-            self.log.debug('Session {} was set'.format(s))
-            self.ui.actionOpen_Camera.setEnabled(False)
-            self.ui.actionOpen_File.setEnabled(False)
-            self.ui.actionOpen_Video_Session.setEnabled(False)
-            self.ui.actionOpen_Live_Session.setEnabled(False)
-        else:
-            error = QtWidgets.QErrorMessage()
-            error.showMessage("Error in setting session. Not set.")
-            self.session_file = None
 
     @QtCore.pyqtSlot()
     def video_size_changed(self):
-        # TODO: Show new size
-        # FIXME: Check if video writer is running and complain if so
-        self.log.debug('Video size changed')
+        (w, h) = self.device.display_frame_size
+        self.log.debug('Video size changed to {}, {}'.format(w, h))
         self.updateGeometry()
 
     @QtCore.pyqtSlot()
@@ -249,7 +230,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Information)
 
-        # TODO: Which video?
         msg.setText("Video Completed")
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
         msg.exec_()
@@ -391,7 +371,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.set_video_in(video_in_filename)
         if self._device and isinstance(self._device, VideoDeviceManager):
             self._device.set_session(self.session_file)
-            self.log.debug("Video session file set to {} with video file {}".format(self.session_file, video_in_filename))
+            self.log.debug("Video session file set to {} with video file {}".format(self.session_file,
+                                                                                    video_in_filename))
         else:
             raise RuntimeError("can't open video session ")
 
@@ -443,7 +424,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         control_widget.ui.timeSlider.setTickInterval(int(last_frame/10))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
-        self.device.video_finished_signal.connect(self.video_finished)  # TODO still needed?
+        self.device.video_finished_signal.connect(self.video_finished)
 
         self.device.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
         self.device.frame_pos_signal.connect(control_widget.set_frame)
@@ -469,7 +450,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def keyPressEvent(self, event):
         self.log.debug("key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         if self.device:
-            keymap = self.device.key_interface()
+            keymap = self._analyzer.key_interface()
             if not event.isAutoRepeat() and event.key() in keymap:
                 msg = keymap[event.key()] + '1'
                 self.key_action.emit(msg)
@@ -478,45 +459,30 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def keyReleaseEvent(self, event):
         self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         if self.device:
-            keymap = self.device.key_interface()
+            keymap = self._analyzer.key_interface()
             if not event.isAutoRepeat() and event.key() in keymap:
                 msg = keymap[event.key()] + '0'
                 self.key_action.emit(msg)
         event.accept()
 
-    @QtCore.pyqtSlot()
-    def get_comments(self):  # FIXME move to session manager controller
-        # noinspection PyArgumentList
-        dialog = QtWidgets.QInputDialog(None)
-        dialog.setInputMode(QtWidgets.QInputDialog.TextInput)
-        dialog.setLabelText("Comments:")
-        dialog.setWindowTitle("Insert Comments")
-        dialog.setOption(QtWidgets.QInputDialog.UsePlainTextEditForTextInput)
-        # noinspection PyUnresolvedReferences
-        dialog.accepted.connect(self.process_comments)
-        self.comments_dialog = dialog
-        dialog.show()
-
-    def process_comments(self):  # FIXME move to session manager controller
-        text = self.comments_dialog.textValue()
-        print("window comments: " + text)
-        self.comments_received.emit(text)
-
 
 def _main():
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Starting Score with git version {}'.format(GIT_VERSION))
-    app = QtWidgets.QApplication(sys.argv)
+    try:
+        app = QtWidgets.QApplication(sys.argv)
 
-    window = ScorerMainWindow()
-    # window.device = CameraDevice(mirrored=True)
-    window.show()
-    app.quitOnLastWindowClosed = True
-    # noinspection PyUnresolvedReferences
-    app.lastWindowClosed.connect(window.close_all)
-    logging.info("Starting app")
-    app.exec_()
-    logging.info('All done.')
+        window = ScorerMainWindow()
+        # window.device = CameraDevice(mirrored=True)
+        window.show()
+        app.quitOnLastWindowClosed = True
+        # noinspection PyUnresolvedReferences
+        app.lastWindowClosed.connect(window.close_all)
+        logging.info("Starting app")
+        app.exec_()
+        logging.info('All done.')
+    except Exception as e:
+        logging.error("Uncaught exception: {}".format(str(e)))
 
 
 if __name__ == '__main__':

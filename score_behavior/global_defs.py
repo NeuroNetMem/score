@@ -1,8 +1,9 @@
 from enum import Enum
 
-
-class TrialState(Enum):
-    IDLE = 1
+class DeviceState(Enum):
+    NOT_READY = 1
     READY = 2
-    ONGOING = 3
-    COMPLETED = 4
+    READY_FOR_TRIAL = 3
+    ACQUIRING = 4
+    RECORDING = 5
+    FINISHED = 6
