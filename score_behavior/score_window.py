@@ -1,7 +1,6 @@
 
 
 from PyQt5 import QtCore
-from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
 import logging
@@ -9,131 +8,13 @@ import os
 import sys
 
 from score_behavior import GIT_VERSION
-
 # noinspection PyUnresolvedReferences
 import score_behavior.obj_rc
-from .score_controller import VideoDeviceManager, CameraDeviceManager, DeviceManager
-from .video_control import VideoControlWidget
-from .score_window_ui import Ui_MainWindow
-from .trial_dialog_ui import Ui_TrialDialog
-from .ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
-
-
-class TrialDialog(QtWidgets.QDialog):
-    def __init__(self, caller=None, trial_params=None, locations=None):
-        super(TrialDialog, self).__init__(flags=QtCore.Qt.WindowFlags())
-        self.log = logging.getLogger(__name__)
-        self.log.debug('Trial Dialog initializing')
-        self.ui = Ui_TrialDialog()
-        self.ui.setupUi(self)
-        self.ui.objectComboBox.currentIndexChanged.connect(self.update_object_change)
-        if caller:
-            self.ui.addTrialButton.clicked.connect(caller.add_trial)
-            self.ui.skipTrialButton.clicked.connect(caller.skip_trial)
-
-        if locations:
-            self.ui.location1ComboBox.addItems(locations)
-            self.ui.location2ComboBox.addItems(locations)
-            self.locations = locations
-        else:
-            self.log.error('Locations missing')  # TODO emit
-            raise ValueError("missing argument locations")
-
-        # object codes are derived by the filenames of the images in the resource file
-        d = QtCore.QDir(':/obj_images')
-        lst = d.entryList()
-        self.obj_idxs = [int(s[:-4]) for s in lst]
-        self.obj_idxs.sort()
-        str_obj_idxs = [str(i) for i in self.obj_idxs]
-        self.ui.objectComboBox.addItems(str_obj_idxs)
-
-        self.set_values(trial_params)
-        self.set_image()
-        self.setWindowTitle("Next Trial")
-
-    def set_image(self):
-        obj_idx = self.get_current_object()
-        try:
-            # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
-            pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
-            pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
-        except ValueError:
-            print("object not in list!")
-            self.log.error('Object {} not in list!'.format(obj_idx))  # TODO make a "null object" image
-            return None
-        else:
-            self.ui.objectLabel.setPixmap(pixmap)
-            return obj_idx
-
-    def set_readonly(self, ro):
-        self.ui.sessionLineEdit.setReadOnly(ro)
-        self.ui.runLineEdit.setReadOnly(ro)
-        self.ui.trialLineEdit.setReadOnly(ro)
-        self.ui.subjectLineEdit.setReadOnly(ro)
-        self.ui.subjectTrialLineEdit.setReadOnly(ro)
-        self.ui.objectComboBox.setEnabled(not ro)
-        self.ui.location1ComboBox.setEnabled(not ro)
-        self.ui.location2ComboBox.setEnabled(not ro)
-
-    @QtCore.pyqtSlot(int)
-    def update_object_change(self, _):
-        self.set_image()
-        self.update()
-
-    def get_current_object(self):
-        return self.obj_idxs[self.ui.objectComboBox.currentIndex()]
-
-    def set_values(self, values):
-        print(values['trial'])
-        self.ui.sessionLineEdit.setText(str(values['session']))
-        self.ui.runLineEdit.setText(str(values['run_nr']))
-        self.ui.trialLineEdit.setText(str(values['sequence_nr']))
-        self.ui.subjectLineEdit.setText(str(values['subject']))
-        self.ui.subjectTrialLineEdit.setText(str(values['trial']))
-        self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
-        self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
-        self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
-        px = self.make_location_map(values)
-        self.ui.objLocLabel.setPixmap(px)
-
-    def make_location_map(self, values):
-        w = self.ui.objLocLabel
-        p = QtGui.QPixmap(w.width(), w.height())
-        p.fill(QtCore.Qt.white)
-        width = w.width()
-        height = w.height()
-
-        sz = min(width, height) * 0.96
-
-        painter = QtGui.QPainter()
-        pen = QtGui.QPen()
-        pen.setColor(QtCore.Qt.black)
-        pen.setWidth(5)
-        painter.begin(p)
-        painter.setPen(pen)
-        painter.drawRect(width * 0.02, height * 0.02, sz, sz)
-
-        obj_rect = {
-            'UL': QtCore.QRect(width * 0.1, height * 0.1, sz * 0.2, sz * 0.2),
-            'UR': QtCore.QRect(width * 0.7, height * 0.1, sz * 0.2, sz * 0.2),
-            'LL': QtCore.QRect(width * 0.1, height * 0.7, sz * 0.2, sz * 0.2),
-            'LR': QtCore.QRect(width * 0.7, height * 0.7, sz * 0.2, sz * 0.2)}
-
-        painter.setBrush(QtCore.Qt.black)
-        painter.drawEllipse(obj_rect[values['loc_1']])
-        painter.drawEllipse(obj_rect[values['loc_2']])
-        painter.end()
-
-        return p
-
-    def get_values(self):
-        values = {'session': int(self.ui.sessionLineEdit.text()), 'run_nr': int(self.ui.runLineEdit.text()),
-                  'sequence_nr': int(self.ui.trialLineEdit.text()), 'subject': int(self.ui.subjectLineEdit.text()),
-                  'loc_1': self.locations[self.ui.location1ComboBox.currentIndex()],
-                  'loc_2': self.locations[self.ui.location2ComboBox.currentIndex()],
-                  'obj': self.obj_idxs[self.ui.objectComboBox.currentIndex()],
-                  'trial': int(self.ui.subjectTrialLineEdit.text())}
-        return values
+from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
+from score_behavior.video_control import VideoControlWidget
+from score_behavior.score_window_ui import Ui_MainWindow
+from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from score_behavior.global_defs import DeviceState
 
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
@@ -172,7 +53,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._device = dev
         if dev:
             # noinspection PyUnresolvedReferences
-            self.ui.cameraWidget.key_action.connect(self._device.obj_state_change)
+            self.ui.cameraWidget.key_action.connect(self._analyzer.obj_state_change)
             self.ui.mirroredButton.setEnabled(True)
             self.ui.mirroredButton.toggled.connect(self.device.set_mirror)
             self.ui.rotateComboBox.setEnabled(True)
@@ -186,12 +67,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
             self.device.state_changed_signal.connect(self.change_device_state)
             self.change_device_state(dev.state)
+            self._analyzer.device = self.device
             # self.device.can_acquire_signal.connect(self.change_acquisition_state)
             # self.change_acquisition_state(dev.can_acquire)
             # self.device.is_acquiring_signal.connect(self.acquisition_started_stopped)
             # self.device.is_paused_signal.connect(self.has_paused)
             self.device.size_changed_signal.connect(self.video_size_changed)
-            self.device.video_file_changed_signal.connect(self.ui.destLabel.setText)
+            self.device.video_out_file_changed_signal.connect(self.ui.destLabel.setText)
             self.device.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
             self.device.error_signal.connect(self.error_and_close)
             self.device.yes_no_question_signal.connect(self.yes_no_question)
@@ -199,7 +81,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
 
-            self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
             self._analyzer.init_tracker(self.device.frame_size)
 
             self.ui.cameraWidget.mouse_press_action_signal.connect(self._analyzer.mouse_press_action)
@@ -207,6 +88,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.cameraWidget.mouse_release_action_signal.connect(self._analyzer.mouse_release_action)
             self.ui.cameraWidget.key_action.connect(self._analyzer.obj_state_change)
             self.device.set_analyzer(self._analyzer)
+            # noinspection PyUnresolvedReferences
             self.key_action.connect(self._analyzer.obj_state_change)
 
             if self._analyzer.tracker:
@@ -234,17 +116,17 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
         msg.exec_()
 
-    @QtCore.pyqtSlot(DeviceManager.State)
+    @QtCore.pyqtSlot(DeviceState)
     def change_device_state(self, state):
-        if state == DeviceManager.State.NOT_READY:
+        if state == DeviceState.NOT_READY:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(False)
-        elif state == DeviceManager.State.READY:
+        elif state == DeviceState.READY:
             self.ui.playButton.setEnabled(True)
             self.ui.pauseButton.setEnabled(False)
             self.ui.actionStop_Acquisition.setEnabled(False)
             self.ui.scaleComboBox.setEnabled(False)
-        elif state == DeviceManager.State.ACQUIRING:
+        elif state == DeviceState.ACQUIRING:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(True)
             self.ui.actionStop_Acquisition.setEnabled(True)
@@ -376,25 +258,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         else:
             raise RuntimeError("can't open video session ")
 
-    # # noinspection PyArgumentList
-    # @QtCore.pyqtSlot()
-    # def get_save_video_file(self):
-    #     import os
-    #     # noinspection PyCallByClass,PyTypeChecker
-    #     dialog_out = QtWidgets.QFileDialog.getSaveFileName(self, "Save Video File",
-    #                                                        os.path.join(os.getcwd(), 'untitled.avi'),
-    #                                                        "Videos (*.avi)")
-    #     save_video_file = dialog_out[0]
-    #     if save_video_file:
-    #         self.device.set_out_video_file(save_video_file)
-    #         self.ui.destLabel.setText(os.path.basename(save_video_file))
-    #         self.ui.rawVideoCheckBox.setEnabled(False)
-
     def set_camera(self, camera_id):
         self.log.debug('Set camera to {}'.format(camera_id))
         if self.device:
             self.device.cleanup()
-        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file)
+        self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file,
+                                          analyzer=self._analyzer)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
@@ -409,9 +279,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def set_video_in(self, video_filename):
         if self.device:
             self.device.cleanup()
-        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file)
-        self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
         control_widget = VideoControlWidget()
+        self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file,
+                                         widget=control_widget, analyzer=self._analyzer)
+        self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
+
         last_frame = self.device.video_last_frame()
         control_widget.ui.playButton.clicked.connect(self.device.play_action)
         control_widget.ui.pauseButton.clicked.connect(self.device.pause_action)
@@ -448,7 +321,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.setFocus()
 
     def keyPressEvent(self, event):
-        self.log.debug("key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
+        self.log.log(5, "key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         if self.device:
             keymap = self._analyzer.key_interface()
             if not event.isAutoRepeat() and event.key() in keymap:
@@ -457,7 +330,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         event.accept()
 
     def keyReleaseEvent(self, event):
-        self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
+        self.log.log(5, "key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
         if self.device:
             keymap = self._analyzer.key_interface()
             if not event.isAutoRepeat() and event.key() in keymap:

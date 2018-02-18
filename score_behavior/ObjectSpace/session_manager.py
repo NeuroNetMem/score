@@ -2,23 +2,27 @@ import numpy as np
 import pandas as pd
 from pandas.core.common import PandasError
 
-from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+
+import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
     required_columns = ('condition', 'group', 'session', 'subject', 'trial',)
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None,
-                 min_free_disk_space=0):
+                 min_free_disk_space=0, mode='live', r_keys=None):
 
         import platform
         free_disk_space = 400
-
+        logger.info("Creating session manager from file {} starting from trial {}".format(filename, initial_trial))
         if platform.system() == 'Darwin' or platform.system() == 'Linux':
             import os
             st = os.statvfs(filename)
             free_disk_space = int(st.f_frsize * st.f_bfree / 1.e9)
-            print("{} GB of disk space available".format(free_disk_space))
         elif platform.system() == 'Windows':
             import os
             import ctypes
@@ -27,9 +31,14 @@ class SessionManager:
             _ = ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(dirname), None, None,
                                                            ctypes.pointer(free_bytes))
             free_disk_space = free_bytes.value / 1024 / 1024 / 1024
+        print("{} GB of disk space available".format(free_disk_space))
+        logger.info("{} GB of disk space available".format(free_disk_space))
         if min_free_disk_space > 0 and free_disk_space < min_free_disk_space:
+            logger.error("""Insufficient amount of free disk space, (min {} GB needed).
+This program will cowardly refuse to continue""".format(min_free_disk_space))
             raise RuntimeError("""Insufficient amount of free disk space, (min {} GB needed).
 This program will cowardly refuse to continue""".format(min_free_disk_space))
+        self.mode = mode
         self.scheme_file = filename
         self.cur_trial = 1
         try:
@@ -62,6 +71,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.open_result_file()
         self.open_log_file()
 
+        if r_keys:
+            self.r_keys = r_keys
+        else:
+            self.r_keys = []
+
     def open_result_file(self):
         import os
         import shutil
@@ -72,13 +86,16 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
                                     'loc_1_time_5', 'loc_2_time_5',
                                     'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
         self.result_columns.extend(self.extra_trial_columns)
+        logger.info("Attempting to open result file {}".format(self.result_file))
         if os.path.exists(self.result_file):
+            logger.info("File exists, backing it up")
             shutil.copyfile(self.result_file, self.result_file + '.bk')
             self.trials_results = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
             self.cur_trial = self.trials_results.index.max() + 1
         else:
             self.trials_results = pd.DataFrame(columns=self.result_columns)
             self.trials_results.set_index('sequence_nr', inplace=True)
+        logger.debug("File ready for writing")
 
     def get_result_file_name(self):
         import os
@@ -94,12 +111,15 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.log_file = self.get_log_file_name()
         self.event_columns = ['wall_time', 'trial_time', 'frame', 'sequence_nr', 'type', 'start_stop']
         self.event_columns.extend(self.extra_event_columns)
+        logger.info("Attempting to open session log file {}".format(self.log_file))
         if os.path.exists(self.log_file):
+            logger.info("File exists, backing it up")
             shutil.copyfile(self.log_file, self.log_file + '.bk')
             self.events = pd.DataFrame.from_csv(self.log_file, index_col='wall_time')
         else:
             self.events = pd.DataFrame(columns=self.event_columns)
             self.events.set_index('wall_time', inplace=True)
+        logger.debug("File ready for writing")
 
     def get_log_file_name(self):
         import os
@@ -158,12 +178,21 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
     def set_comments(self, comments):
         self.comments = comments
 
-    def get_video_file_name_for_trial(self):
+    @staticmethod
+    def make_datetime_string(d):
+        a = '{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}'.format(d.year, d.month, d.day, d.hour, d.minute, d.second)
+        return a
+
+    def get_video_out_file_name_for_trial(self):
         import os
         dirname = os.path.dirname(self.scheme_file)
         basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         trial_no_str = str(self.cur_trial).zfill(4)
-        filename = os.path.join(dirname, basename + '_t' + trial_no_str + '.avi')
+        codes = {'live': 'L', 'video': 'V'}
+        mode_code = codes[self.mode]
+        date_string = self.make_datetime_string(datetime.datetime.now())
+        filename = os.path.join(dirname, basename + '_t' + trial_no_str + mode_code + date_string + '.avi')
+        logger.info("Saving video to file {}".format(filename))
         return filename
 
     def set_event(self, ts, frame_no, msg, *extra_data):
@@ -210,8 +239,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         st = lt.iloc[0]['trial_time']
         en = st + 300
         trial_5_min = nts.IntervalSet(st, en, time_units='s')
-        r_keys = ObjectSpaceFrameAnalyzer.rect_coord.keys()
-        locations = list(r_keys)
+        r_keys = self.r_keys
+        locations = r_keys
         explore_time = {}
         explore_time_5 = {}
         for l in locations:

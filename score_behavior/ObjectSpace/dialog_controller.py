@@ -22,7 +22,7 @@ class TrialDialogController(QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def start_dialog(self):
-        from score_behavior.score_window import TrialDialog
+        from score_behavior.ObjectSpace.trial_dialog import TrialDialog
         self.dialog = TrialDialog(caller=self.caller, trial_params=self.scheme, locations=self.locations)
         self.dialog.set_readonly(True)
         self.ok = self.dialog.exec_()

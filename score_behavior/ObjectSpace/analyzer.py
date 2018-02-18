@@ -3,7 +3,7 @@ import cv2
 from PyQt5 import QtCore
 
 from score_behavior.score_analyzer import FrameAnalyzer
-
+from score_behavior.global_defs import DeviceState
 import logging
 
 from .dialog_controller import TrialDialogController
@@ -32,9 +32,10 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.track_start_y = -1
         self.track_end_x = -1
         self.track_end_y = -1
-        self.dialog = TrialDialogController(self, list(self.analyzer.rect_coord.keys()))
+        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()))
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
+        self.r_keys = list(self.rect_coord.keys())
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
@@ -44,13 +45,12 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         t = self.device.get_cur_time()
         if msg == 'TR0':
             return
-        if msg == 'TR1' and self.device.trial_state != self.TrialState.FINISHED:
+        if msg == 'TR1' and self.trial_state != self.TrialState.COMPLETED:
             trial_on = 1 - self.obj_state['TR']
             self.obj_state['TR'] = trial_on
-            print("trial_on: ", trial_on)
             msg = 'TR' + str(trial_on)
             if trial_on:
-                self.device.trial_state = self.TrialState.ONGOING
+                self.trial_state = self.TrialState.ONGOING
                 self.device.start_time = self.device.get_absolute_time()
             else:
                 self.trial_state = self.TrialState.COMPLETED
@@ -62,7 +62,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
             else:
                 self.obj_state[msg[:-1]] = 0
 
-        if self.device.state == self.device.State.ACQUIRING:
+        if self.device.state == DeviceState.ACQUIRING:
             ts = t.seconds + 1.e-6 * t.microseconds
             self.session.set_event(ts, self.device.frame_no, msg)
 

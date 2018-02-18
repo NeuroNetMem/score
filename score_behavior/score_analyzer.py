@@ -1,13 +1,14 @@
 from enum import Enum
 import cv2
 from PyQt5 import QtCore
+from PyQt5 import QtWidgets
 import numpy as np
 
 import logging
-from .tracking.tracker import Tracker
-from .ObjectSpace.session_manager import SessionManager
-from .global_defs import DeviceState as State
-from .tracking_controller.tracker_controller import TrackerController
+from score_behavior.tracking.tracker import Tracker
+from score_behavior.ObjectSpace.session_manager import SessionManager
+from score_behavior.global_defs import DeviceState as State
+from score_behavior.tracking_controller.tracker_controller import TrackerController
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,10 @@ class FrameAnalyzer(QtCore.QObject):
         ONGOING = 3
         COMPLETED = 4
 
-    trial_state_changed_signal = QtCore.pyqtSignal(TrialState, name="Analyzer.trial_state_changed_signal")
+    trial_state_changed_signal = QtCore.pyqtSignal(TrialState, name="FrameAnalyzer.trial_state_changed_signal")
+    trial_number_changed_signal = QtCore.pyqtSignal(str, name="FrameAnalyzer.trial_state_changed_signal")
+
+    session_set_signal = QtCore.pyqtSignal(bool, name="FrameAnalyzer.session_set_signal")
 
     def __init__(self, device, parent=None):
         super(FrameAnalyzer, self).__init__(parent)
@@ -34,9 +38,11 @@ class FrameAnalyzer(QtCore.QObject):
         self.animal_start_y = -1
         self.animal_end_x = -1
         self.animal_end_y = -1
-        self.dialog = None  # TODO
         self.session = None
         self.splash_screen = None
+        self.mode = None
+        self.video_out_filename = None
+        self.r_keys = []
 
     @property
     def trial_state(self):
@@ -52,16 +58,13 @@ class FrameAnalyzer(QtCore.QObject):
     def device_state_has_changed(self, val, prev_val):
         if val == State.ACQUIRING:
             self.trial_state = self.TrialState.READY
-            if self.session:
-                self.trial_setup()
+            self.trial_setup()
         elif val == State.READY:
             if prev_val == State.ACQUIRING:
-                if self.session:
-                    self.finalize_trial()
+                self.finalize_trial()
         elif val == State.FINISHED:
-            if self.session:
-                self.session.close()
-                self.session = None
+            self.session.close()
+            self.session = None
 
     @QtCore.pyqtSlot(str)
     def obj_state_change(self, msg):
@@ -74,6 +77,7 @@ class FrameAnalyzer(QtCore.QObject):
         return self.dir_keys
 
     def set_session(self, filename, mode='live'):
+        self.mode = mode
         try:
             # noinspection PyUnresolvedReferences,PyCallByClass,PyTypeChecker
             init_trial, ok = QtWidgets.QInputDialog.getInt(None,
@@ -85,8 +89,9 @@ class FrameAnalyzer(QtCore.QObject):
             logger.debug("Attempting to start camera session from file {} and from trial {}".format(filename,
                                                                                                     init_trial))
             try:
-                self.session = SessionManager(filename, initial_trial=init_trial, min_free_disk_space=25, mode=mode)
-            except RuntimeError as e:
+                self.session = SessionManager(filename, initial_trial=init_trial, min_free_disk_space=25, mode=mode,
+                                              r_keys=self.r_keys)
+            except Exception as e:
                 logger.error("Could not start session from file {}. RunTimeError {}".format(filename, str(e)))
                 self.error_signal.emit(str(e))
                 return -1
@@ -118,9 +123,10 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session.set_trial_info(self.dialog.get_values())
                 break
             else:
-                continue
-        self.video_out_filename = self.session.get_video_file_name_for_trial()  # TODO send to controller
-        self.open_files()
+                self.device.state = State.ACQUIRING
+                break
+        self.video_out_filename = self.session.get_video_out_file_name_for_trial()  # TODO send to controller
+        self.device.open_video_out_files(self.video_out_filename)
         self.session.set_comments('')
         trial_info = self.session.get_trial_info()
         self.make_splash_screen(trial_info)
@@ -149,14 +155,14 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session.set_event(ts, self.frame_no, 'TR0')
                 self.trial_state = self.TrialState.COMPLETED
                 self.process_message('TR0')
-            self.close_files()
+            self.device.close_video_out_files()
             self.session.analyze_trial()
             self.session.set_trial_finished()
-            self.trial_state = self.TrialState.IDLE
+        self.trial_state = self.TrialState.IDLE
 
     def make_splash_screen(self, trial_info):
         width, height = self.device.frame_size
-        self.device.splash_screen_countdown = self.fps * 3  # show the splash screen for three seconds
+        self.device.splash_screen_countdown = self.device.fps * 3  # show the splash screen for three seconds
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
         font = cv2.FONT_HERSHEY_DUPLEX
@@ -259,5 +265,5 @@ class FrameAnalyzer(QtCore.QObject):
             self.tracker.track(frame)
             if self.animal_start_x != -1:
                 yellow = (255, 255, 0)
-                cv2.line(frame, (self.animal_start_x, self.animal_start_y),
+                cv2.line(frame, (self.animal_start_x, self.animal_start_y),  # TODO check why the line is misaligned
                          (self.animal_end_x, self.animal_end_y), yellow, 2)
