@@ -318,7 +318,6 @@ class Ui_MainWindow(object):
         self.actionStop_Acquisition.setText(_translate("MainWindow", "Stop Acquisition"))
 
 from score_behavior.cv_video_widget import CVVideoWidget
-import score_behavior.obj_rc
 
 if __name__ == "__main__":
     import sys

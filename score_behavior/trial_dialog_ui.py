@@ -120,7 +120,6 @@ class Ui_TrialDialog(object):
         self.addTrialButton.setText(_translate("TrialDialog", "Add Trial"))
         self.skipTrialButton.setText(_translate("TrialDialog", "Skip Trial"))
 
-import score_behavior.obj_rc
 
 if __name__ == "__main__":
     import sys

@@ -57,6 +57,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             raise ValueError("couldn't open file correctly")
         if not set(self.scheme.columns) > set(self.required_columns):
             raise ValueError('required columns were not present')
+
+        self.test_object_images()
         self.cur_run = initial_trial
         self.trial_ready = False
 
@@ -84,6 +86,20 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.r_keys = r_keys
         else:
             self.r_keys = []
+
+    def get_object_list(self):
+        obj_list = pd.unique(self.scheme['obj'])
+        return list(obj_list)
+
+    def test_object_images(self):
+        import imghdr
+        obj_list = self.get_object_list()
+        for obj_idx in obj_list:
+            fname = os.path.join(self.object_dir, str(obj_idx) + '.JPG')
+            if not os.path.exists(fname):
+                raise RuntimeError("Object image file {} does not exist".format(fname))
+            if imghdr.what(fname) != 'jpeg':
+                raise RuntimeError("File {} is not a JPG image".format(fname))
 
     def read_config(self):
         config_dict = get_config_section("data_manager")

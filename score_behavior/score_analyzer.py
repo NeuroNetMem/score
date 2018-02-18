@@ -23,7 +23,7 @@ class FrameAnalyzer(QtCore.QObject):
 
     trial_state_changed_signal = QtCore.pyqtSignal(TrialState, name="FrameAnalyzer.trial_state_changed_signal")
     trial_number_changed_signal = QtCore.pyqtSignal(str, name="FrameAnalyzer.trial_state_changed_signal")
-
+    error_signal = QtCore.pyqtSignal(str, name="FrameAnalyzer.error_signal")
     session_set_signal = QtCore.pyqtSignal(bool, name="FrameAnalyzer.session_set_signal")
 
     def __init__(self, device, parent=None):

@@ -190,9 +190,7 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="resources/objects/obj.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>stdButtons</sender>

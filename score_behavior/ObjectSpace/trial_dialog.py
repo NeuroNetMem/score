@@ -1,4 +1,5 @@
 import logging
+import os.path
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
@@ -8,7 +9,7 @@ from score_behavior.trial_dialog_ui import Ui_TrialDialog
 class TrialDialog(QtWidgets.QDialog):
     trial_dialog_error_signal = QtCore.pyqtSignal(str, name='TrialDialog.trial_dialog_error_signal')
 
-    def __init__(self, caller=None, trial_params=None, locations=None):
+    def __init__(self, caller=None, trial_params=None, locations=None, object_dir=None, object_list=None):
         super(TrialDialog, self).__init__(flags=QtCore.Qt.WindowFlags())
         self.log = logging.getLogger(__name__)
         self.log.debug('Trial Dialog initializing')
@@ -28,11 +29,12 @@ class TrialDialog(QtWidgets.QDialog):
             self.trial_dialog_error_signal.emit('Locations missing')
             raise ValueError("missing argument locations")
 
-        # object codes are derived by the filenames of the images in the resource file
-        d = QtCore.QDir(':/obj_images')
-        lst = d.entryList()
-        self.obj_idxs = [int(s[:-4]) for s in lst]
-        self.obj_idxs.sort()
+        if object_list:
+            self.obj_idx = object_list
+
+        if object_dir:
+            self.obj_dir = object_dir
+
         str_obj_idxs = [str(i) for i in self.obj_idxs]
         self.ui.objectComboBox.addItems(str_obj_idxs)
 
@@ -50,7 +52,7 @@ class TrialDialog(QtWidgets.QDialog):
         pixmap = None
         try:
             # noinspection PyCallByClass,PyTypeChecker,PyArgumentList
-            pixmap = QtGui.QPixmap(":/obj_images/" + str(obj_idx) + '.JPG')
+            pixmap = QtGui.QPixmap(os.path.join(self.obj_dir, str(obj_idx) + '.JPG'))
             pixmap = pixmap.scaled(self.ui.objectLabel.size(), QtCore.Qt.KeepAspectRatio)
         except ValueError:
             self.log.warning('Object {} not in list!'.format(obj_idx))

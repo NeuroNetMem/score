@@ -32,18 +32,18 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.track_start_y = -1
         self.track_end_x = -1
         self.track_end_y = -1
-        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()))
+        self.dialog = None
+        self.r_keys = list(self.rect_coord.keys())
+
+    def set_session(self, filename, mode='live'):
+        super(ObjectSpaceFrameAnalyzer, self).set_session(filename, mode)
+        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()), object_dir=self.session.object_dir,
+                                            object_list=self.session.get_object_list())
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
-        self.r_keys = list(self.rect_coord.keys())
 
     def start_trial_dialog(self):
         self.dialog_trigger_signal.emit()
-        #loop = QtCore.QEventLoop()
-        # noinspection PyUnresolvedReferences
-        #self.dialog.dialog_done_signal.connect(loop.quit)
-        #loop.exec_()
-        #logger.debug("dialog loop has exited")
 
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}

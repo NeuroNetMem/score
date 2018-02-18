@@ -141,4 +141,4 @@ class Ui_VideoControlWidget(object):
         self.groupBox_5.setTitle(_translate("VideoControlWidget", "Frame"))
         self.frameLabel.setText(_translate("VideoControlWidget", "0000"))
 
-import video_in_icons_rc
+import score_behavior.video_in_icons_rc

@@ -9,7 +9,6 @@ import sys
 
 from score_behavior import GIT_VERSION
 # noinspection PyUnresolvedReferences
-import score_behavior.obj_rc
 from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
 from score_behavior.video_control import VideoControlWidget
 from score_behavior.score_window_ui import Ui_MainWindow
@@ -249,6 +248,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if self.device:
             self.device.cleanup()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self._analyzer.error_signal.connect(self.error_and_close)
         self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file,
                                           analyzer=self._analyzer)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
@@ -267,6 +267,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.device.cleanup()
         control_widget = VideoControlWidget()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self._analyzer.error_signal.connect(self.error_and_close)
         self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file,
                                          widget=control_widget, analyzer=self._analyzer)
         self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))

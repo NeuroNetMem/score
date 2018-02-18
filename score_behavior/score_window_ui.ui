@@ -691,8 +691,6 @@
    <header>score_behavior.cv_video_widget</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="resources/objects/obj.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
