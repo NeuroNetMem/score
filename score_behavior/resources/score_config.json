@@ -1,0 +1,22 @@
+{
+  "general": {
+    "do_track": 1,
+    "debug": 1
+  },
+  "analyzer": {},
+  "tracker": {
+    "max_num_animals": 1,
+    "component_threshold": 40,
+    "speed_threshold": 1.2,
+    "head_radius": 5,
+    "front_radius": 7,
+    "back_radius": 10
+  },
+  "data_manager": {
+    "extra_trial_columns": ["gene"],
+    "extra_event_columns": ["gene"],
+    "video_in_source": "glob",
+    "video_in_glob": "{prefix}_t{trial:0>4}L*_raw.avi",
+    "object_dir": "/Users/fpbatta/src/batlab/score/score_behavior/resources/objects"
+  }
+}

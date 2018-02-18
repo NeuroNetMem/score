@@ -4,6 +4,7 @@ import math
 from enum import Enum
 
 import score_behavior.geometry as geometry
+from score_behavior.score_config import get_config_section
 import logging
 
 logger = logging.getLogger(__name__)
@@ -274,9 +275,9 @@ class Animal:
         start = geometry.Point(start_x, start_y)
         end = geometry.Point(end_x, end_y)
 
-        self.scaled_head_radius = 5
-        self.scaled_front_radius = 7
-        self.scaled_back_radius = 10
+        self.scaled_head_radius = self.host.scaled_head_radius
+        self.scaled_front_radius = self.host.scaled_front_radius
+        self.scaled_back_radius = self.host.scaled_back_radius
 
         head_radius = self.scaled_head_radius / host.scale_factor
         front_radius = self.scaled_front_radius / host.scale_factor
@@ -472,14 +473,13 @@ class Tracker:
                     State.ACQUIRING_BG: 'BG Acq.'}
 
     class Configuration:
-        """configuration values TODO to be superseded by a config file?"""
+        """configuration values"""
         skeletonization_res_width = 550 / 1.4
         skeletonization_res_height = 420 / 1.4
         skeletonization_border = 20
         vertebra_length = 10
         pixels_to_meters = 1
         scale = 1
-        max_animal_velocity = 1  # m/s
 
         def __init__(self):
             pass
@@ -492,6 +492,14 @@ class Tracker:
 
     # noinspection PyArgumentList
     def __init__(self, frame_size, config=Configuration()):
+        self.scaled_head_radius = 5
+        self.scaled_front_radius = 7
+        self.scaled_back_radius = 10
+        self.component_threshold = 40
+        self.speed_threshold = 1.2
+        self.max_num_animals = 1
+        self.read_config()
+
         frame_width, frame_height = frame_size
         config.skeletonization_res_height = frame_height
         config.skeletonization_res_width = frame_width
@@ -499,12 +507,10 @@ class Tracker:
         self.centroids = None
         self.scale_factor = self.calculate_scale_factor(frame_width, frame_height)
         config.pixels_to_meters = float(config.scale) / frame_width
-        config.max_animal_velocity = 1  # m/s
+
         config.vertebra_length = config.vertebra_length * self.scale_factor
         self.show_thresholded = False
-        self.component_threshold = 40
-        self.speed_threshold = 1.2
-        self.max_num_animals = 1
+
         self.background = None
         self.show_model = True
         self.show_posture = True
@@ -515,6 +521,21 @@ class Tracker:
         self.background_frames = 5
         self.background_countdown = 0
         self.background_buffer = None
+
+    def read_config(self):
+        d = get_config_section("tracker")
+        if "max_num_animals" in d:
+            self.max_num_animals = d['max_num_animals']
+        if "component_threshold" in d:
+            self.component_threshold = d['component_threshold']
+        if "speed_threshold" in d:
+            self.speed_threshold = d['speed_threshold']
+        if "head_radius" in d:
+            self.scaled_head_radius = d['head_radius']
+        if "front_radius" in d:
+            self.scaled_front_radius = d['front_radius']
+        if "back_radius" in d:
+            self.scaled_back_radius = d['back_radius']
 
     @property
     def state(self):
@@ -567,7 +588,10 @@ class Tracker:
 
     def add_animal(self, start_x, start_y, end_x, end_y, config=Animal.Configuration()):
         """add an animal to the list of animals"""
-        logger.log(5, "Adding animal")
+        if len(self.animals) >= self.max_num_animals:
+            logger.debug("Attempting to create too many animals")
+            return
+        logger.info("Adding animal")
         self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, self.centroids, config))
         if len(self.animals) == self.max_num_animals:
             self.state = self.State.TRACKING

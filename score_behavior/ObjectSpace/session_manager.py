@@ -6,6 +6,9 @@ from pandas.core.common import PandasError
 import datetime
 import logging
 import os.path
+import glob
+
+from score_behavior.score_config import get_config_section
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +18,12 @@ class SessionManager:
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None,
                  min_free_disk_space=0, mode='live', r_keys=None):
+        self.video_in_source = None
+        self.video_in_glob = None
+        self.extra_event_columns = []
+        self.extra_trial_columns = []
+        self.object_dir = None
+        self.read_config()
 
         import platform
         free_disk_space = 400
@@ -40,6 +49,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.mode = mode
         self.scheme_file = filename
+
         self.cur_trial = 1
         try:
             self.scheme = pd.DataFrame.from_csv(self.scheme_file, index_col='run_nr')
@@ -61,11 +71,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.comments = ''
         if not extra_event_columns:
             extra_event_columns = []
-        self.extra_event_columns = extra_event_columns
+        self.extra_event_columns.extend(extra_event_columns)
 
         if not extra_trial_columns:
             extra_trial_columns = []
-        self.extra_trial_columns = extra_trial_columns
+        self.extra_trial_columns.extend(extra_trial_columns)
 
         self.open_result_file()
         self.open_log_file()
@@ -74,6 +84,19 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.r_keys = r_keys
         else:
             self.r_keys = []
+
+    def read_config(self):
+        config_dict = get_config_section("data_manager")
+        if "extra_trial_columns" in config_dict:
+            self.extra_trial_columns = config_dict["extra_trial_columns"]
+        if "extra_event_columns" in config_dict:
+            self.extra_event_columns = config_dict["extra_event_columns"]
+        if "video_in_source" in config_dict:
+            self.video_in_source = config_dict["video_in_source"]
+        if "video_in_glob" in config_dict:
+            self.video_in_glob = config_dict["video_in_glob"]
+        if "object_dir" in config_dict:
+            self.object_dir = config_dict["object_dir"]
 
     def open_result_file(self):
         import os
@@ -193,8 +216,20 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         filename = os.path.join(dirname, basename + '_raw.avi')
         return filename
 
+    def get_video_in_file_name_for_trial(self):
+        if self.video_in_source == "glob":
+            dirname = os.path.dirname(self.scheme_file)
+            basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
+            trial_no = self.cur_trial
+            file_glob = self.video_in_glob.format(prefix=basename, trial=trial_no)
+            file_list = glob.glob(file_glob).sort()
+            filename = os.path.join(dirname, file_list[-1])  # we are using the most recent available file with that
+            # trial number
+        else:
+            raise ValueError("Unknown video in mode {}".format(self.video_in_source))
+        return filename
+
     def get_video_out_file_name_for_trial(self):
-        import os
         dirname = os.path.dirname(self.scheme_file)
         basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         trial_no_str = str(self.cur_trial).zfill(4)

@@ -15,6 +15,7 @@ from score_behavior.video_control import VideoControlWidget
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 from score_behavior.global_defs import DeviceState
+from score_behavior.score_config import config_init, get_config_section
 
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
@@ -23,6 +24,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(ScorerMainWindow, self).__init__(flags=QtCore.Qt.WindowFlags())
+        self.do_track = True
+        self.read_config()
         self.log = logging.getLogger(__name__)
         self.log.info('Initializing main window')
 
@@ -37,12 +40,16 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
         self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
         self.ui.actionStop_Acquisition.setEnabled(False)
-        # self.ui.actionSave_to.triggered.connect(self.get_save_video_file)
-        # self.ui.actionSave_to.setEnabled(False)
+
         self.ui.rawVideoCheckBox.setEnabled(False)
         self.ui.displayTsCheckBox.setChecked(True)
         self.setWindowTitle("Object in place task")
         self.comments_dialog = None
+
+    def read_config(self):
+        d = get_config_section("general")
+        if "do_track" in d:
+            self.do_track = bool(d["do_track"])
 
     @property
     def device(self):
@@ -81,7 +88,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
 
-            self._analyzer.init_tracker(self.device.frame_size)
+            if self.do_track:
+                self._analyzer.init_tracker(self.device.frame_size)
 
             self.ui.cameraWidget.mouse_press_action_signal.connect(self._analyzer.mouse_press_action)
             self.ui.cameraWidget.mouse_move_action_signal.connect(self._analyzer.mouse_move_action)
@@ -318,8 +326,20 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
 
 def _main():
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    config_init()  # TODO add option for a outside configuration file
+    d = get_config_section("general")
+    if d['debug']:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Starting Score with git version {}'.format(GIT_VERSION))
+    if d['debug']:
+        logging.info("Running in debug mode")
+    else:
+        logging.info("Running in release mode")
+
     try:
         app = QtWidgets.QApplication(sys.argv)
 
