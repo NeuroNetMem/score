@@ -5,7 +5,7 @@ from pandas.core.common import PandasError
 
 import datetime
 import logging
-
+import os.path
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,6 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if not set(self.scheme.columns) > set(self.required_columns):
             raise ValueError('required columns were not present')
         self.cur_run = initial_trial
-        self.trial_ongoing = False
         self.trial_ready = False
 
         self.result_columns = None
@@ -84,7 +83,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.result_columns.insert(0, 'run_nr')
         self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time',
                                     'loc_1_time_5', 'loc_2_time_5',
-                                    'total', 'sequence_nr', 'comments', 'originalnr', 'goal'))
+                                    'total', 'sequence_nr', 'comments', 'originalnr', 'goal', 'video_out_filename',
+                                    'video_out_raw_filename'))
         self.result_columns.extend(self.extra_trial_columns)
         logger.info("Attempting to open result file {}".format(self.result_file))
         if os.path.exists(self.result_file):
@@ -142,7 +142,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
     def get_trial_info(self):
         s = self.trials_results.ix[self.cur_trial].copy()
         s['sequence_nr'] = self.cur_trial
-        print('get trial: ', self.cur_trial)
+        logger.log(5, "Getting trial {}", self.cur_trial)
         return s
 
     def set_trial_info(self, info):
@@ -150,8 +150,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         info['start_date'] = str(datetime.datetime.now())[:-4]
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
-        print('set trial, info[''sequence_nr''', info['sequence_nr'])
-        print('cur_trial', self.cur_trial)
+        logger.info("updating trial {}".format(info['sequence_nr']))
+        logger.info("update info: {}".format(str(info)))
         assert info['sequence_nr'] == self.cur_trial
 
         df_update.set_index('sequence_nr', inplace=True)
@@ -163,12 +163,14 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         r.update(self.scheme.loc[self.cur_run])
         self.trials_results.loc[info['sequence_nr']] = r
 
-    def set_trial_finished(self):
-        self.trial_ongoing = False
+    def set_trial_finished(self, video_out_filename, video_out_raw_filename):
         if self.comments:
             self.trials_results.loc[self.cur_trial]['comments'] = self.comments
+        self.trials_results.loc[self.cur_trial]['video_out_filename'] = os.path.basename(video_out_filename)
+        self.trials_results.loc[self.cur_trial]['video_out_raw_filename'] = os.path.basename(video_out_raw_filename)
         self.trials_results.to_csv(self.result_file)
         self.events.to_csv(self.log_file)
+        logger.info("finalized trial {}".format(self.cur_trial))
         self.cur_trial += 1
         self.cur_run += 1
 
@@ -180,8 +182,16 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     @staticmethod
     def make_datetime_string(d):
-        a = '{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}'.format(d.year, d.month, d.day, d.hour, d.minute, d.second)
+        a = '{:0>4}-{:0>2}-{:0>2}_{:0>2}.{:0>2}.{:0>2}'.format(d.year, d.month, d.day, d.hour, d.minute, d.second)
         return a
+
+    @staticmethod
+    def make_raw_filename(video_filename):
+        import os
+        dirname = os.path.dirname(video_filename)
+        basename, _ = os.path.splitext(os.path.basename(video_filename))
+        filename = os.path.join(dirname, basename + '_raw.avi')
+        return filename
 
     def get_video_out_file_name_for_trial(self):
         import os
@@ -192,8 +202,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         mode_code = codes[self.mode]
         date_string = self.make_datetime_string(datetime.datetime.now())
         filename = os.path.join(dirname, basename + '_t' + trial_no_str + mode_code + date_string + '.avi')
+        filename_raw = self.make_raw_filename(filename)
         logger.info("Saving video to file {}".format(filename))
-        return filename
+        return filename, filename_raw
 
     def set_event(self, ts, frame_no, msg, *extra_data):
         import time
@@ -233,6 +244,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         import neuroseries as nts
         lt = self.get_events_for_trial()
         info = self.get_scheme_trial_info()
+        logger.info("Analyzing trial {}".format(self.cur_trial))
         loc_1 = info['loc_1']
         loc_2 = info['loc_2']
 
@@ -274,3 +286,4 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
     def close(self):
         self.events.to_csv(self.log_file)
         self.trials_results.to_csv(self.result_file)
+        logger.info("Closed csv files")

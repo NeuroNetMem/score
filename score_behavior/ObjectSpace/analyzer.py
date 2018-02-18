@@ -37,6 +37,14 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
         self.r_keys = list(self.rect_coord.keys())
 
+    def start_trial_dialog(self):
+        self.dialog_trigger_signal.emit()
+        #loop = QtCore.QEventLoop()
+        # noinspection PyUnresolvedReferences
+        #self.dialog.dialog_done_signal.connect(loop.quit)
+        #loop.exec_()
+        #logger.debug("dialog loop has exited")
+
     def init_obj_state(self):
         self.obj_state = {'UL': 0, 'UR': 0, 'LR': 0, 'LL': 0, 'TR': 0}
 

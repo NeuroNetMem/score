@@ -1,5 +1,8 @@
 from PyQt5 import QtCore
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TrialDialogController(QtCore.QObject):
     dialog_done_signal = QtCore.pyqtSignal(name="TrialDialogController.dialog_done_signal")
@@ -26,7 +29,9 @@ class TrialDialogController(QtCore.QObject):
         self.dialog = TrialDialog(caller=self.caller, trial_params=self.scheme, locations=self.locations)
         self.dialog.set_readonly(True)
         self.ok = self.dialog.exec_()
+        logger.debug("Dialog has finished")
         self.dialog_done_signal.emit()
+        logger.debug("And signal emitted")
 
     def exit_status(self):
         return self.ok

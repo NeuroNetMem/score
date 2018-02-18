@@ -52,14 +52,14 @@ class CVVideoWidget(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot()
     def size_changed(self):
-        w, h = self._camera_device.frame_size
-        self.setMinimumSize(w, h)  # TODO rescale so that it fits in maximum size
+        w, h = self._camera_device.display_frame_size
+        self.setMinimumSize(w, h)
         self.setMaximumSize(w, h)
         self.updateGeometry()
 
     def sizeHint(self):
         if self._camera_device:
-            w, h = self._camera_device.frame_size
+            w, h = self._camera_device.display_frame_size
             return QtCore.QSize(w, h)
         else:
             return QtCore.QSize(800, 600)

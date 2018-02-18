@@ -85,7 +85,7 @@ class DeviceManager(QtCore.QObject):
         self._device = self.init_device()
 
         self.start_time = self.get_absolute_time()
-        self.frame_no = 0
+        self._frame_no = 0
         self.last_frame = None
 
         self.capturing = False
@@ -135,15 +135,16 @@ class DeviceManager(QtCore.QObject):
         logger.debug("Scale changed to {}".format(self.scale))
         self.size_changed_signal.emit()
 
-    # @property
-    # def can_acquire(self):
-    #     # this means that we have a input and output devices ready
-    #     return self._can_acquire
-    #
-    # @can_acquire.setter
-    # def can_acquire(self, val):
-    #     self._can_acquire = val
-    #     self.can_acquire_signal.emit(val)
+    @property
+    def frame_no(self):
+        # if self.out and self.out.isOpened():
+        #     return int(self.out.get(cv2.CAP_PROP_POS_FRAMES))
+        # else:
+        return self._frame_no
+
+    @frame_no.setter
+    def frame_no(self, val):
+        self._frame_no = val
 
     @property
     def state(self):
@@ -205,17 +206,18 @@ class DeviceManager(QtCore.QObject):
         self.yes_no_answer_signal.emit(i)
         self.yes_no = i
 
-    def open_video_out_files(self, filename=None):
+    def open_video_out_files(self, filename=None, filename_raw=None):
         import os
+        self.video_out_filename = filename
         logger.info("Attempting to open video file {} for writing ".format(self.video_out_filename))
-        if os.path.exists(filename):
+        if os.path.exists(self.video_out_filename):
             logger.error("File {} exists, ".format(self.video_out_filename))
             self.error_signal.emit("File {} exists, this shouldn't happen. Cannot continue".
                                    format(self.video_out_filename))
         import platform
         codec_string = ''
         if platform.system() == 'Darwin':
-            codec_string = 'mp4v'
+            codec_string = 'MJPG'
         elif platform.system() == 'Linux':
             codec_string = 'MJPG'
         elif platform.system() == 'Windows':
@@ -223,17 +225,19 @@ class DeviceManager(QtCore.QObject):
 
         fourcc = cv2.VideoWriter_fourcc(*codec_string)
         if self.out:
-            self.out.release()
+            # self.out.release()
             self.out = None
         self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size)
+        self.frame_no = 0
         if self.save_raw_video:
             if self.raw_out:
-                self.raw_out.release()
+                # self.raw_out.release()
                 self.raw_out = None
-            self.raw_out = cv2.VideoWriter(self.make_raw_filename(filename), fourcc, self.fps, self.frame_size)
+            self.raw_out = cv2.VideoWriter(filename_raw, fourcc, self.fps, self.frame_size)
         if self.out.isOpened():
-            self.state = State.READY
-            logger.info("successfully opened video out file {}".format(filename))
+            logger.info("successfully opened video out file {} at {} fps and {} frame size".format(filename, self.fps,
+                                                                                                   self.frame_size))
+            self.start_time = self.get_absolute_time()
         else:
             import warnings
             self.state = State.NOT_READY
@@ -251,14 +255,6 @@ class DeviceManager(QtCore.QObject):
             self.raw_out.release()
             self.raw_out = None
         logger.debug("closed video files for trial")
-
-    @staticmethod
-    def make_raw_filename(video_filename):
-        import os
-        dirname = os.path.dirname(video_filename)
-        basename, _ = os.path.splitext(os.path.basename(video_filename))
-        filename = os.path.join(dirname, basename + '_raw.avi')
-        return filename
 
     @QtCore.pyqtSlot()
     def query_frame(self):
@@ -385,7 +381,6 @@ class VideoDeviceManager(DeviceManager):
             tds = self.timedelta_to_string(self.get_cur_time())
 
             self.time_pos_signal.emit(tds)
-
             h, w, _ = frame.shape
 
             if self.state == State.ACQUIRING:
@@ -394,6 +389,7 @@ class VideoDeviceManager(DeviceManager):
                 self.process_frame(frame)  # should it be called only when recording?
 
                 if self.out:
+                    logger.debug("saving frame of shape {}".format(str(frame.shape)))
                     self.out.write(frame)
 
             self.new_frame.emit(frame)
