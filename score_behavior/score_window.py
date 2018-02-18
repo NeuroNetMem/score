@@ -121,45 +121,23 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if state == DeviceState.NOT_READY:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(False)
+            self.ui.scaleComboBox.setEnabled(True)
+            self.ui.rotateComboBox.setEnabled(True)
+            self.ui.mirroredButton.setEnabled(True)
         elif state == DeviceState.READY:
             self.ui.playButton.setEnabled(True)
             self.ui.pauseButton.setEnabled(False)
             self.ui.actionStop_Acquisition.setEnabled(False)
             self.ui.scaleComboBox.setEnabled(False)
+            self.ui.rotateComboBox.setEnabled(False)
+            self.ui.mirroredButton.setEnabled(False)
         elif state == DeviceState.ACQUIRING:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(True)
             self.ui.actionStop_Acquisition.setEnabled(True)
             self.ui.scaleComboBox.setEnabled(False)
-
-    # @QtCore.pyqtSlot(bool)
-    # def change_acquisition_state(self, can_acquire):
-    #     self.ui.playButton.setEnabled(can_acquire)
-    #     if can_acquire:
-    #         self.ui.pauseButton.setEnabled(False)
-    #         self.ui.actionStop_Acquisition.setEnabled(False)
-    #
-    # @QtCore.pyqtSlot(bool)
-    # def acquisition_started_stopped(self, val):
-    #     self.ui.playButton.setEnabled(False)
-    #     if val:
-    #         self.ui.pauseButton.setEnabled(True)
-    #         self.ui.actionStop_Acquisition.setEnabled(True)
-    #         self.ui.scaleComboBox.setEnabled(False)
-    #     else:
-    #         self.ui.pauseButton.setEnabled(False)
-    #         self.ui.actionStop_Acquisition.setEnabled(False)
-    #
-    # @QtCore.pyqtSlot(bool)
-    # def has_paused(self, val):
-    #     if val:
-    #         self.ui.playButton.setEnabled(True)
-    #         self.ui.pauseButton.setEnabled(False)
-    #         self.ui.actionStop_Acquisition.setEnabled(True)
-    #     else:
-    #         self.ui.playButton.setEnabled(False)
-    #         self.ui.pauseButton.setEnabled(True)
-    #         self.ui.actionStop_Acquisition.setEnabled(True)
+            self.ui.rotateComboBox.setEnabled(False)
+            self.ui.mirroredButton.setEnabled(False)
 
     @QtCore.pyqtSlot(str)
     def error_and_close(self, e):
