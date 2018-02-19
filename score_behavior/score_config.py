@@ -6,7 +6,7 @@ _config_dict = {}
 
 
 def config_init(fname=None):
-    config_list = ['/Users/fpbatta/src/batlab/score/score_behavior/resources']  # TODO add proper names for config file
+    config_list = ['/Users/fpbatta/src/batlab/score/score_behavior/resources/score_config.json']  # TODO add proper names for config file
     if fname:
         config_list.append(fname)
 

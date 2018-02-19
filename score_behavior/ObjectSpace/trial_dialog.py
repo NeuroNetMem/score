@@ -30,7 +30,7 @@ class TrialDialog(QtWidgets.QDialog):
             raise ValueError("missing argument locations")
 
         if object_list:
-            self.obj_idx = object_list
+            self.obj_idxs = object_list
 
         if object_dir:
             self.obj_dir = object_dir
