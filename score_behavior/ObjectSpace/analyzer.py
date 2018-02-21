@@ -36,11 +36,12 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.r_keys = list(self.rect_coord.keys())
 
     def set_session(self, filename, mode='live'):
-        super(ObjectSpaceFrameAnalyzer, self).set_session(filename, mode)
-        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()), object_dir=self.session.object_dir,
-                                            object_list=self.session.get_object_list())
+        ret = super(ObjectSpaceFrameAnalyzer, self).set_session(filename, mode)
+        self.dialog = TrialDialogController(self, list(self.rect_coord.keys()),
+                                            object_files=self.session.get_object_files())
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
+        return ret
 
     def start_trial_dialog(self):
         self.dialog_trigger_signal.emit()

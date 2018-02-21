@@ -58,6 +58,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if not set(self.scheme.columns) > set(self.required_columns):
             raise ValueError('required columns were not present')
 
+        self.object_files = {}
         self.test_object_images()
         self.cur_run = initial_trial
         self.trial_ready = False
@@ -69,6 +70,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.log_file = None
         self.event_columns = None
         self.events = None
+
 
         self.comments = ''
         if not extra_event_columns:
@@ -87,19 +89,20 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         else:
             self.r_keys = []
 
-    def get_object_list(self):
-        obj_list = pd.unique(self.scheme['obj'])
-        return list(obj_list)
+    def get_object_files(self):
+        return self.object_files
 
     def test_object_images(self):
         import imghdr
-        obj_list = self.get_object_list()
-        for obj_idx in obj_list:
+        obj_idxs = list(pd.unique(self.scheme['obj']))
+        self.object_files = {}
+        for obj_idx in obj_idxs:
             fname = os.path.join(self.object_dir, str(obj_idx) + '.JPG')
             if not os.path.exists(fname):
                 raise RuntimeError("Object image file {} does not exist".format(fname))
             if imghdr.what(fname) != 'jpeg':
                 raise RuntimeError("File {} is not a JPG image".format(fname))
+            self.object_files[obj_idx] = fname
 
     def read_config(self):
         config_dict = get_config_section("data_manager")
@@ -238,8 +241,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
             trial_no = self.cur_trial
             file_glob = self.video_in_glob.format(prefix=basename, trial=trial_no)
-            file_list = glob.glob(file_glob).sort()
-            filename = os.path.join(dirname, file_list[-1])  # we are using the most recent available file with that
+            file_glob = os.path.join(dirname, file_glob)
+            file_list = glob.glob(file_glob)
+            file_list.sort()
+            logger.debug("used glob {} and got file list {}".format(file_glob, file_list))
+            filename = file_list[-1]  # we are using the most recent available file with that
             # trial number
         else:
             raise ValueError("Unknown video in mode {}".format(self.video_in_source))

@@ -9,7 +9,7 @@ from score_behavior.tracking.tracker import Tracker
 from score_behavior.ObjectSpace.session_manager import SessionManager
 from score_behavior.global_defs import DeviceState as State
 from score_behavior.tracking_controller.tracker_controller import TrackerController
-
+from score_behavior.score_config import get_config_section
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,8 @@ class FrameAnalyzer(QtCore.QObject):
 
     def __init__(self, device, parent=None):
         super(FrameAnalyzer, self).__init__(parent)
+        self.do_track = False
+        self.read_config()
         self.device = device
         self.csv_out = None
         self.tracker = None
@@ -45,6 +47,11 @@ class FrameAnalyzer(QtCore.QObject):
         self.r_keys = []
         self.dialog = None
         self.video_out_raw_filename = None
+
+    def read_config(self):
+        d = get_config_section("analyzer")
+        if "do_track" in d:
+            self.do_track = bool(d["do_track"])
 
     @property
     def trial_state(self):
@@ -87,8 +94,8 @@ class FrameAnalyzer(QtCore.QObject):
                                                            1, min=1, flags=QtCore.Qt.WindowFlags())
             if not ok:
                 init_trial = 1
-            logger.debug("Attempting to start camera session from file {} and from trial {}".format(filename,
-                                                                                                    init_trial))
+            logger.debug("Attempting to start {} session from file {} and from trial {}".format(self.mode, filename,
+                                                                                                init_trial))
             try:
                 self.session = SessionManager(filename, initial_trial=init_trial, min_free_disk_space=25, mode=mode,
                                               r_keys=self.r_keys)
@@ -98,6 +105,7 @@ class FrameAnalyzer(QtCore.QObject):
                 return -1
 
             self.session_set_signal.emit(True)
+            logger.debug("Session correctly opened")
             return 0
 
         except ValueError as e:
@@ -124,6 +132,7 @@ class FrameAnalyzer(QtCore.QObject):
             self.device.state = State.READY
             return
         logger.info("back to trial_setup")
+        self.device.setup_input_for_trial()
         self.video_out_filename, self.video_out_raw_filename = self.session.get_video_out_file_name_for_trial()
         self.device.open_video_out_files(self.video_out_filename, self.video_out_raw_filename)
         self.session.set_comments('')
@@ -205,8 +214,13 @@ class FrameAnalyzer(QtCore.QObject):
             self.session.set_comments(comments)
 
     def init_tracker(self, frame_size):
+        if not self.do_track:
+            return
         self.tracker = Tracker(frame_size)
         self.tracker_controller = TrackerController(self.tracker, parent=None)
+        self.parent().ui.sidebarWidget.layout().addWidget(self.tracker_controller.widget)
+        # if self._analyzer.tracker:
+        #     self.ui.sidebarWidget.layout().addWidget(self._analyzer.tracker_controller.widget)
 
     def set_background(self, frame, frame_no=0):
         log_msg = "Setting background starting at frame {}.".format(frame_no)

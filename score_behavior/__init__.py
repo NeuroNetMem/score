@@ -6,7 +6,7 @@ import subprocess
 current_path = os.getcwd()
 try:
     os.chdir(os.path.dirname(__file__))
-    GIT_VERSION = subprocess.check_output(["git", "describe", "--always"]).strip().decode('utf-8')
+    GIT_VERSION = subprocess.check_output(["git", "describe"]).strip().decode('utf-8')
 except subprocess.CalledProcessError as e:
     GIT_VERSION = "Unknown"
 os.chdir(current_path)
@@ -18,4 +18,6 @@ except ImportError:
         def emit(self, record):
             pass
 
-#logging.getLogger(__name__).addHandler(NullHandler())
+appname = "Score"
+appauthor = "MemDynLab"
+# logging.getLogger(__name__).addHandler(NullHandler())

@@ -9,6 +9,7 @@ import logging
 from PyQt5 import QtCore
 
 from .global_defs import DeviceState as State
+from score_behavior.video_control import VideoControlWidget
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +29,11 @@ def find_how_many_cameras():
 class DeviceManager(QtCore.QObject):
 
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
-    # can_acquire_signal = QtCore.pyqtSignal(bool, name="CameraDevice.can_acquire_signal")
-    # is_acquiring_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_acquiring_signal")
-    # is_paused_signal = QtCore.pyqtSignal(bool, name="CameraDevice.is_paused_signal")
     state_changed_signal = QtCore.pyqtSignal(State, State, name="CameraDevice.state_changed_signal")
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
     session_set_signal = QtCore.pyqtSignal(bool, name="CameraDevice.session_set")
     # only to set the label on the window
     video_out_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_out_file_changed_signal')
-    trial_number_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.trial_number_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
     yes_no_question_signal = QtCore.pyqtSignal(str, name='CameraDevice.yes_no_question_signal')
     yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
@@ -49,7 +46,7 @@ class DeviceManager(QtCore.QObject):
                         180: (lambda img: cv2.flip(img, -1)),
                         270: (lambda img: cv2.flip(cv2.transpose(img), 0))}
 
-    def __init__(self, parent=None, session_file=None, analyzer=None):
+    def __init__(self, parent=None, analyzer=None):
         super(DeviceManager, self).__init__(parent)
 
         # initializing image display
@@ -60,12 +57,8 @@ class DeviceManager(QtCore.QObject):
 
         self._timer = None
         self.interval = 0
-        self.session = None
         self.analyzer = analyzer
-        if session_file:
-            self.set_session(session_file)
-        else:
-            self._state = State.READY
+
         self.splash_screen = None
         self.splash_screen_countdown = 0
         self.analyzer = None
@@ -88,8 +81,6 @@ class DeviceManager(QtCore.QObject):
         self._frame_no = 0
         self.last_frame = None
 
-        self.capturing = False
-
         self.track_start_x = -1
         self.track_start_y = -1
         self.track_end_x = 0
@@ -106,7 +97,6 @@ class DeviceManager(QtCore.QObject):
         self.thread = QtCore.QThread()
         logger.debug("creating thread. id: {}".format(self.thread))
         self.moveToThread(self.thread)
-        self.capturing = True
         # noinspection PyUnresolvedReferences
         self.thread.started.connect(self.run)
         self.thread.start()
@@ -124,10 +114,6 @@ class DeviceManager(QtCore.QObject):
 
     def init_device(self):
         return None  # "pure virtual" function
-
-    # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def set_session(self, filename):
-        return None  # pure virtual
 
     @QtCore.pyqtSlot(int)
     def change_scale(self, i):
@@ -205,6 +191,9 @@ class DeviceManager(QtCore.QObject):
     def yes_no_answer(self, i):
         self.yes_no_answer_signal.emit(i)
         self.yes_no = i
+
+    def setup_input_for_trial(self):
+        pass # do nothing if it's not a video device
 
     def open_video_out_files(self, filename=None, filename_raw=None):
         import os
@@ -327,22 +316,82 @@ class VideoDeviceManager(DeviceManager):
 
     speed_possible = ['0.5', '0.8', '1', '1.2', '1.5', '2']
 
-    def __init__(self, video_file=None, parent=None, session_file=None, widget=None, analyzer=None):
-        self.video_file = video_file
-        super(VideoDeviceManager, self).__init__(parent=parent, session_file=session_file, analyzer=analyzer)
+    def __init__(self, video_file=None, parent=None, session_file=None, analyzer=None):
+        self.video_in_file_name = video_file
+        super(VideoDeviceManager, self).__init__(parent=parent, analyzer=analyzer)
         self.save_raw_video = False
         self.playback_speed = 1.
-        self.init_thread()
         self.is_paused = False
-        self.widget = widget
+        self.video_control_widget = None
+        self.state = State.READY
 
     def init_device(self):
+        if self.video_in_file_name is None:
+            return
         # noinspection PyArgumentList
-        cd = cv2.VideoCapture(self.video_file)
+        logger.info("Loading video in file {}", self.video_in_file_name)
+        # noinspection PyArgumentList
+        self._device = cv2.VideoCapture(self.video_in_file_name)
         if not cd.isOpened():
-            logger.error("Could not open video file {}".format(self.video_file))
-            raise RuntimeError("Could not open video file {}".format(self.video_file))
-        return cd
+            logger.error("Could not open video file {}".format(self.video_in_file_name))
+            raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
+
+        if self.video_control_widget is None:
+            control_widget = VideoControlWidget()
+            control_widget.ui.playButton.clicked.connect(self.play_action)
+            control_widget.ui.pauseButton.clicked.connect(self.pause_action)
+            control_widget.ui.fastForwardButton.clicked.connect(self.fastforward_action)
+            control_widget.ui.rewindButton.clicked.connect(self.rewind_action)
+
+            control_widget.ui.timeSlider.setEnabled(True)
+            control_widget.ui.timeSlider.setMinimum(0)
+
+            last_frame = self.video_last_frame()
+            control_widget.ui.timeSlider.setMaximum(last_frame)
+            control_widget.ui.timeSlider.setTickInterval(int(last_frame / 10))
+
+            control_widget.ui.timeSlider.sliderMoved.connect(self.device.skip_to_frame)
+            control_widget.ui.speedComboBox.addItems([str(i) for i in self.device.speed_possible])
+            control_widget.ui.speedComboBox.setEnabled(True)
+            # default speed is 1
+            ix1 = [i for i in range(len(self.device.speed_possible)) if self.device.speed_possible[i] == '1']
+            control_widget.ui.speedComboBox.setCurrentIndex(ix1[0])
+            control_widget.ui.speedComboBox.currentIndexChanged.connect(self.device.speed_action)
+            self.device.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
+            self.device.frame_pos_signal.connect(control_widget.set_frame)
+            self.device.time_pos_signal.connect(control_widget.ui.timeLabel.setText)
+
+            self.video_control_widget = control_widget
+            self.parent().ui.sidebarWidget.layout().addWidget(control_widget)
+            self.parent().setFocus()
+
+        if self.thread is None:
+            self.init_thread()
+        return None
+
+    def setup_input_for_trial(self):
+        self.is_paused = True
+        new_in_file = self.analyzer.session.get_video_in_file_name_for_trial()
+        if new_in_file != self.video_in_file_name:
+            self.video_in_file_name = new_in_file
+            self._device = None
+            self.init_device()
+            if self.analyzer.do_track:
+                self.analyzer.init_tracker()
+        if self.video_control_widget:
+            self.video_control_widget.ui.playButton.setEnabled(False)
+            self.video_control_widget.ui.pauseButton(True)
+        self.is_paused = False
+
+    # noinspection PyMethodOverriding
+    @DeviceManager.state.setter
+    def state(self, val):
+        # noinspection PyArgumentList
+        DeviceManager.state.fset(self, val)
+        if val != State.ACQUIRING:
+            if self.video_control_widget:
+                self.video_control_widget.ui.playButton.setEnabled(False)
+                self.video_control_widget.ui.pauseButton(False)
 
     def video_last_frame(self):
         return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -368,7 +417,9 @@ class VideoDeviceManager(DeviceManager):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
 
-        if self.state == State.NOT_READY or self.is_paused is True:
+        if self.state in (State.NOT_READY, State.READY) or self.is_paused is True or \
+                self.analyzer.trial_state == self.analyzer.TrialState.IDLE or \
+                self._device is None:
             return
 
         ret, frame = self._device.read()
@@ -402,9 +453,12 @@ class VideoDeviceManager(DeviceManager):
 
     @property
     def display_frame_size(self):
-        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
-        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
-        return int(w), int(h)
+        if self._device:
+            w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
+            h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
+            return int(w), int(h)
+        else:
+            return 800, 600
 
     @property
     def frame_size(self):
@@ -425,12 +479,6 @@ class VideoDeviceManager(DeviceManager):
     def get_cur_time(self):
         # return datetime.timedelta(milliseconds=self._device.get(cv2.CAP_PROP_POS_MSEC))
         return datetime.timedelta(milliseconds=1000 * self.frame_no / self.fps)
-
-    def set_session(self, filename):
-        if self.analyzer:
-            ret = self.analyzer.set_session(filename, mode='video')
-            if ret == 0:
-                self.state = State.READY
 
     def move_to_frame(self, frame_no):
         if frame_no < self.frame_no:
@@ -457,14 +505,14 @@ class VideoDeviceManager(DeviceManager):
     @QtCore.pyqtSlot()
     def play_action(self):
         self.is_paused = False
-        self.widget.ui.playButton.setEnabled(False)
-        self.widget.ui.pauseButton.setEnabled(True)
+        self.video_control_widget.ui.playButton.setEnabled(False)
+        self.video_control_widget.ui.pauseButton.setEnabled(True)
 
     @QtCore.pyqtSlot()
     def pause_action(self):
         self.is_paused = True
-        self.widget.ui.playButton.setEnabled(True)
-        self.widget.ui.pauseButton.setEnabled(False)
+        self.video_control_widget.ui.playButton.setEnabled(True)
+        self.video_control_widget.ui.pauseButton.setEnabled(False)
 
     @QtCore.pyqtSlot(int)
     def speed_action(self, i):
@@ -478,14 +526,14 @@ class CameraDeviceManager(DeviceManager):
 
     def __init__(self, camera_id=0, parent=None, session_file=None, analyzer=None):
         self.camera_id = camera_id
-        super(CameraDeviceManager, self).__init__(parent=parent, session_file=session_file, analyzer=analyzer)
+        super(CameraDeviceManager, self).__init__(parent=parent, analyzer=analyzer)
         self.init_thread()
         self.state = State.READY
 
     def init_device(self):
         # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
-        cd = cv2.VideoCapture(0)
+        self._device = cv2.VideoCapture(0)
         # cd = cv2.VideoCapture(self.camera_id)
         if not cd.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))
@@ -558,17 +606,10 @@ class CameraDeviceManager(DeviceManager):
         return fps
 
     def get_cur_time(self):
-        if self.session:
-            if self.trial_state != self.TrialState.ONGOING:
-                return datetime.timedelta(0)
-            else:
-                return datetime.datetime.now() - self.start_time
+        if self.trial_state != self.TrialState.ONGOING:
+            return datetime.timedelta(0)
         else:
             return datetime.datetime.now() - self.start_time
 
     def get_absolute_time(self):
         return datetime.datetime.now()
-
-    def set_session(self, filename):
-        if self.analyzer:
-            self.analyzer.set_session(filename, mode='live')

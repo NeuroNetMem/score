@@ -10,11 +10,10 @@ import sys
 from score_behavior import GIT_VERSION
 # noinspection PyUnresolvedReferences
 from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
-from score_behavior.video_control import VideoControlWidget
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 from score_behavior.global_defs import DeviceState
-from score_behavior.score_config import config_init, get_config_section
+from score_behavior.score_config import config_init, get_config_section, config_dict
 
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
@@ -42,13 +41,14 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
         self.ui.rawVideoCheckBox.setEnabled(False)
         self.ui.displayTsCheckBox.setChecked(True)
-        self.setWindowTitle("Object in place task")
+        self.setWindowTitle("Score")
         self.comments_dialog = None
 
     def read_config(self):
-        d = get_config_section("general")
-        if "do_track" in d:
-            self.do_track = bool(d["do_track"])
+        pass
+        # d = get_config_section("general")
+        # if "do_track" in d:
+        #     self.do_track = bool(d["do_track"])
 
     @property
     def device(self):
@@ -80,15 +80,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # self.device.is_paused_signal.connect(self.has_paused)
             self.device.size_changed_signal.connect(self.video_size_changed)
             self.device.video_out_file_changed_signal.connect(self.ui.destLabel.setText)
-            self.device.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
+            self._analyzer.trial_number_changed_signal.connect(self.ui.trialLabel.setText)
             self.device.error_signal.connect(self.error_and_close)
             self.device.yes_no_question_signal.connect(self.yes_no_question)
 
             # noinspection PyUnresolvedReferences
             self.yes_no_answer_signal.connect(self.device.yes_no_answer)
-
-            if self.do_track:
-                self._analyzer.init_tracker(self.device.frame_size)
 
             self.ui.cameraWidget.mouse_press_action_signal.connect(self._analyzer.mouse_press_action)
             self.ui.cameraWidget.mouse_move_action_signal.connect(self._analyzer.mouse_move_action)
@@ -98,8 +95,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.key_action.connect(self._analyzer.obj_state_change)
 
-            if self._analyzer.tracker:
-                self.ui.sidebarWidget.layout().addWidget(self._analyzer.tracker_controller.widget)
+            # if self._analyzer.tracker:
+            #     self.ui.sidebarWidget.layout().addWidget(self._analyzer.tracker_controller.widget)
             self.setFocus()
             self.log.info('Setting device to {}'.format(dev))
         else:
@@ -216,11 +213,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if session_file:
             self.log.info('Session file opened: {}'.format(self.session_file))
             self.session_file = session_file
-
-            if self._device and isinstance(self._device, CameraDeviceManager):
-                self._device.set_session(self.session_file)
-            else:
-                self.get_camera_id_to_open()
         else:
             self.log.info('No session file given. Doing nothing.')
 
@@ -231,26 +223,20 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
                                                            os.getcwd(), "CSV (*.csv)")
-        video_in_filename = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
-                                                                  os.getcwd(), "Videos (*.mp4 *.avi)")
-        video_in_filename = video_in_filename[0]
+        # video_in_filename = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
+        #                                                           os.getcwd(), "Videos (*.mp4 *.avi)")
+        # video_in_filename = video_in_filename[0]
         self.session_file = dialog_out[0]
-        self.set_video_in(video_in_filename)
-        if self._device and isinstance(self._device, VideoDeviceManager):
-            self._device.set_session(self.session_file)
-            self.log.debug("Video session file set to {} with video file {}".format(self.session_file,
-                                                                                    video_in_filename))
-        else:
-            raise RuntimeError("can't open video session ")
+        self.set_video_in()
 
     def set_camera(self, camera_id):
         self.log.debug('Set camera to {}'.format(camera_id))
         if self.device:
             self.device.cleanup()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self._analyzer.set_session(self.session_file, mode='live')
         self._analyzer.error_signal.connect(self.error_and_close)
-        self.device = CameraDeviceManager(camera_id=camera_id, session_file=self.session_file,
-                                          analyzer=self._analyzer)
+        self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
@@ -262,50 +248,26 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.rotateComboBox.setCurrentIndex(0)
         self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
 
-    def set_video_in(self, video_filename):
+    def set_video_in(self):
         if self.device:
             self.device.cleanup()
-        control_widget = VideoControlWidget()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+        self._analyzer.set_session(self.session_file, mode='video')
         self._analyzer.error_signal.connect(self.error_and_close)
-        self.device = VideoDeviceManager(video_file=video_filename, session_file=self.session_file,
-                                         widget=control_widget, analyzer=self._analyzer)
-        self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
+        self.device = VideoDeviceManager(analyzer=self._analyzer)
+        # self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
 
-        last_frame = self.device.video_last_frame()
-        control_widget.ui.playButton.clicked.connect(self.device.play_action)
-        control_widget.ui.pauseButton.clicked.connect(self.device.pause_action)
-        control_widget.ui.fastForwardButton.clicked.connect(self.device.fastforward_action)
-        control_widget.ui.rewindButton.clicked.connect(self.device.rewind_action)
-
-        control_widget.ui.timeSlider.setEnabled(True)
-        control_widget.ui.timeSlider.setMinimum(0)
-        control_widget.ui.timeSlider.setMaximum(last_frame)
-        control_widget.ui.timeSlider.setTickInterval(int(last_frame/10))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
         self.device.video_finished_signal.connect(self.video_finished)
 
-        self.device.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
-        self.device.frame_pos_signal.connect(control_widget.set_frame)
-        self.device.time_pos_signal.connect(control_widget.ui.timeLabel.setText)
 
-        control_widget.ui.timeSlider.sliderMoved.connect(self.device.skip_to_frame)
 
         # self.ui.rotateComboBox.addItems([str(i) for i in self.device.rotate_options])
         # self.ui.rotateComboBox.setEnabled(True)
         # self.ui.rotateComboBox.setCurrentIndex(0)
         # self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
 
-        control_widget.ui.speedComboBox.addItems([str(i) for i in self.device.speed_possible])
-        control_widget.ui.speedComboBox.setEnabled(True)
-        # default speed is 1
-        ix1 = [i for i in range(len(self.device.speed_possible)) if self.device.speed_possible[i] == '1']
-        control_widget.ui.speedComboBox.setCurrentIndex(ix1[0])
-        control_widget.ui.speedComboBox.currentIndexChanged.connect(self.device.speed_action)
-
-        self.ui.sidebarWidget.layout().addWidget(control_widget)
-        self.setFocus()
 
     def keyPressEvent(self, event):
         self.log.log(5, "key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
@@ -328,15 +290,32 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
 
 def _main():
 
-    config_init()  # TODO add option for a outside configuration file
+    import argparse
+    logging.basicConfig(filename='scorer_log.log', level=logging.INFO, filemode='w',
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.info('Starting Score with git version {}'.format(GIT_VERSION))
+
+    parser = argparse.ArgumentParser(description='Experiment control and tracking for behavior.', prog='Score')
+    parser.add_argument('--debug', help="Run in debug mode", action='store_true')
+    parser.add_argument('--config', nargs=1, help="Read a default config file")
+    args = parser.parse_args()
+    fname = None
+    if args.config:
+        fname = args.config[0]
+    config_init(fname)
     d = get_config_section("general")
-    if d['debug']:
+    run_debug = d['debug']
+    if args.debug:
+        run_debug = True
+    if run_debug:
         level = logging.DEBUG
     else:
         level = logging.INFO
-    logging.basicConfig(level=level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logging.info('Starting Score with git version {}'.format(GIT_VERSION))
-    if d['debug']:
+
+    logging.getLogger().setLevel(level)
+    logging.info("Configuration information: {}".format(str(config_dict)))
+
+    if run_debug:
         logging.info("Running in debug mode")
     else:
         logging.info("Running in release mode")
@@ -345,7 +324,6 @@ def _main():
         app = QtWidgets.QApplication(sys.argv)
 
         window = ScorerMainWindow()
-        # window.device = CameraDevice(mirrored=True)
         window.show()
         app.quitOnLastWindowClosed = True
         # noinspection PyUnresolvedReferences
@@ -358,5 +336,4 @@ def _main():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='scorer_log.log', level=logging.DEBUG, filemode='w')
     _main()
