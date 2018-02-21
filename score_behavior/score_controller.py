@@ -37,6 +37,7 @@ class DeviceManager(QtCore.QObject):
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
     yes_no_question_signal = QtCore.pyqtSignal(str, name='CameraDevice.yes_no_question_signal')
     yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
+    time_remaining_signal = QtCore.pyqtSignal(str, name='CameraDevice.time_remaining_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
     scale_init = 2
@@ -77,6 +78,8 @@ class DeviceManager(QtCore.QObject):
         self.to_release = False
         self._device = None  # the underlying video source device
         self.init_device()
+        if self.analyzer.do_track:
+            self.analyzer.init_tracker(self.frame_size)
 
         self.start_time = self.get_absolute_time()
         self._frame_no = 0
@@ -91,6 +94,26 @@ class DeviceManager(QtCore.QObject):
         self.analyzer = analyzer
         # noinspection PyUnresolvedReferences
         self.state_changed_signal.connect(self.analyzer.device_state_has_changed)
+
+    @staticmethod
+    def timedelta_to_string(td):
+        import math
+        ts = td.total_seconds()
+        td1 = datetime.timedelta(seconds=math.floor(ts * 100) / 100)
+        tds = str(td1)
+        if '.' not in tds:
+            tds = tds + '.00'
+        else:
+            tds = tds[:-4]
+        return tds
+
+    def set_remaining_time(self):
+        if self.analyzer.trial_duration_seconds:
+            rem_time = self.analyzer.trial_duration_seconds - self.get_cur_time()
+            rds = self.timedelta_to_string(rem_time)
+            logger.debug("Remaining time is {}, cur time is {}".format(rds, self.get_cur_time()))
+
+            self.time_remaining_signal.emit(rds)
 
     # Threading support
     def init_thread(self):
@@ -314,6 +337,7 @@ class VideoDeviceManager(DeviceManager):
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
     frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
     time_pos_signal = QtCore.pyqtSignal(str, name="CameraDevice.time_pos_signal")
+    video_in_changed_signal = QtCore.pyqtSignal(str, name="CameraDevice.video_in_changed_signal")
 
     speed_possible = ['0.5', '0.8', '1', '1.2', '1.5', '2']
 
@@ -334,7 +358,7 @@ class VideoDeviceManager(DeviceManager):
         logger.info("Loading video in file {}".format(self.video_in_file_name))
         # noinspection PyArgumentList
         self._device = cv2.VideoCapture(self.video_in_file_name)
-
+        self.video_in_changed_signal.emit(self.video_in_file_name)
         if not self._device.isOpened():
             logger.error("Could not open video file {}".format(self.video_in_file_name))
             raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
@@ -400,18 +424,6 @@ class VideoDeviceManager(DeviceManager):
     def video_last_frame(self):
         return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
 
-    @staticmethod
-    def timedelta_to_string(td):
-        import math
-        ts = td.total_seconds()
-        td1 = datetime.timedelta(seconds=math.floor(ts * 100) / 100)
-        tds = str(td1)
-        if '.' not in tds:
-            tds = tds + '.00'
-        else:
-            tds = tds[:-4]
-        return tds
-
     @QtCore.pyqtSlot()
     def query_frame(self):
         #     import cProfile  #  this is for profiling only
@@ -440,6 +452,7 @@ class VideoDeviceManager(DeviceManager):
             tds = self.timedelta_to_string(self.get_cur_time())
 
             self.time_pos_signal.emit(tds)
+            self.set_remaining_time()
             h, w, _ = frame.shape
 
             if self.state == State.ACQUIRING:
@@ -570,6 +583,7 @@ class CameraDeviceManager(DeviceManager):
             if ret:
                 self.frame_no += 1
                 if self.state == State.ACQUIRING:
+                    self.set_remaining_time()
                     if self.save_raw_video and self.raw_out:
                         self.raw_out.write(frame)
                     if self.splash_screen_countdown == 0:

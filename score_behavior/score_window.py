@@ -72,6 +72,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
+            self.device.time_remaining_signal.connect(self.ui.countDownLabel.setText)
             self.device.state_changed_signal.connect(self.change_device_state)
             self.change_device_state(dev.state)
             self._analyzer.device = self.device
@@ -258,23 +259,14 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer.set_session(self.session_file, mode='video')
         self._analyzer.error_signal.connect(self.error_and_close)
         self.device = VideoDeviceManager(analyzer=self._analyzer, parent_window=self)
+        self.device.video_in_changed_signal.connect(self.ui.sourceLabel.setText)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
         self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
-        # self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
-
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
         self.device.video_finished_signal.connect(self.video_finished)
-
-
-
-        # self.ui.rotateComboBox.addItems([str(i) for i in self.device.rotate_options])
-        # self.ui.rotateComboBox.setEnabled(True)
-        # self.ui.rotateComboBox.setCurrentIndex(0)
-        # self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
-
 
     def keyPressEvent(self, event):
         self.log.log(5, "key pressed {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))

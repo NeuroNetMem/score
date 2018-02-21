@@ -5,6 +5,7 @@ from PyQt5 import QtWidgets
 import numpy as np
 
 import logging
+import datetime
 from score_behavior.tracking.tracker import Tracker
 from score_behavior.ObjectSpace.session_manager import SessionManager
 from score_behavior.global_defs import DeviceState as State
@@ -29,6 +30,7 @@ class FrameAnalyzer(QtCore.QObject):
     def __init__(self, device, parent=None):
         super(FrameAnalyzer, self).__init__(parent)
         self.do_track = False
+        self.trial_duration_seconds = 0
         self.read_config()
         self.device = device
         self.csv_out = None
@@ -52,6 +54,8 @@ class FrameAnalyzer(QtCore.QObject):
         d = get_config_section("analyzer")
         if "do_track" in d:
             self.do_track = bool(d["do_track"])
+        if "trial_duration_seconds" in d:
+            self.trial_duration_seconds = datetime.timedelta(seconds=d['trial_duration_seconds'])
 
     @property
     def trial_state(self):
