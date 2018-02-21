@@ -164,6 +164,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.log.debug('Closing all')
         if self.device:
             self.device.cleanup()
+
         if self._analyzer:
             self._analyzer.close()
         QtCore.QCoreApplication.quit()
@@ -236,7 +237,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
         self._analyzer.set_session(self.session_file, mode='live')
         self._analyzer.error_signal.connect(self.error_and_close)
-        self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer)
+        self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer, parent_window=self)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
@@ -254,7 +255,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
         self._analyzer.set_session(self.session_file, mode='video')
         self._analyzer.error_signal.connect(self.error_and_close)
-        self.device = VideoDeviceManager(analyzer=self._analyzer)
+        self.device = VideoDeviceManager(analyzer=self._analyzer, parent_window=self)
         # self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
 
         self.ui.actionSave_to.setEnabled(True)

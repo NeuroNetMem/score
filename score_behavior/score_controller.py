@@ -46,10 +46,11 @@ class DeviceManager(QtCore.QObject):
                         180: (lambda img: cv2.flip(img, -1)),
                         270: (lambda img: cv2.flip(cv2.transpose(img), 0))}
 
-    def __init__(self, parent=None, analyzer=None):
-        super(DeviceManager, self).__init__(parent)
+    def __init__(self, parent_window=None, analyzer=None):
+        super(DeviceManager, self).__init__()
 
         # initializing image display
+        self.parent_window = parent_window
         self.mirrored = False
         self.rotate_angle = 0
         self.scale = float(self.scales_possible[self.scale_init])
@@ -316,23 +317,24 @@ class VideoDeviceManager(DeviceManager):
 
     speed_possible = ['0.5', '0.8', '1', '1.2', '1.5', '2']
 
-    def __init__(self, video_file=None, parent=None, session_file=None, analyzer=None):
+    def __init__(self, video_file=None, parent_window=None, session_file=None, analyzer=None):
         self.video_in_file_name = video_file
-        super(VideoDeviceManager, self).__init__(parent=parent, analyzer=analyzer)
+        super(VideoDeviceManager, self).__init__(parent_window=parent_window, analyzer=analyzer)
         self.save_raw_video = False
         self.playback_speed = 1.
         self.is_paused = False
         self.video_control_widget = None
         self.state = State.READY
 
+    # noinspection PyUnresolvedReferences
     def init_device(self):
         if self.video_in_file_name is None:
             return
         # noinspection PyArgumentList
-        logger.info("Loading video in file {}", self.video_in_file_name)
+        logger.info("Loading video in file {}".format(self.video_in_file_name))
         # noinspection PyArgumentList
         self._device = cv2.VideoCapture(self.video_in_file_name)
-        if not cd.isOpened():
+        if not self._device.isOpened():
             logger.error("Could not open video file {}".format(self.video_in_file_name))
             raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
 
@@ -350,20 +352,20 @@ class VideoDeviceManager(DeviceManager):
             control_widget.ui.timeSlider.setMaximum(last_frame)
             control_widget.ui.timeSlider.setTickInterval(int(last_frame / 10))
 
-            control_widget.ui.timeSlider.sliderMoved.connect(self.device.skip_to_frame)
-            control_widget.ui.speedComboBox.addItems([str(i) for i in self.device.speed_possible])
+            control_widget.ui.timeSlider.sliderMoved.connect(self.skip_to_frame)
+            control_widget.ui.speedComboBox.addItems([str(i) for i in self.speed_possible])
             control_widget.ui.speedComboBox.setEnabled(True)
             # default speed is 1
-            ix1 = [i for i in range(len(self.device.speed_possible)) if self.device.speed_possible[i] == '1']
+            ix1 = [i for i in range(len(self.speed_possible)) if self.speed_possible[i] == '1']
             control_widget.ui.speedComboBox.setCurrentIndex(ix1[0])
-            control_widget.ui.speedComboBox.currentIndexChanged.connect(self.device.speed_action)
-            self.device.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
-            self.device.frame_pos_signal.connect(control_widget.set_frame)
-            self.device.time_pos_signal.connect(control_widget.ui.timeLabel.setText)
+            control_widget.ui.speedComboBox.currentIndexChanged.connect(self.speed_action)
+            self.frame_pos_signal.connect(control_widget.ui.timeSlider.setValue)
+            self.frame_pos_signal.connect(control_widget.set_frame)
+            self.time_pos_signal.connect(control_widget.ui.timeLabel.setText)
 
             self.video_control_widget = control_widget
-            self.parent().ui.sidebarWidget.layout().addWidget(control_widget)
-            self.parent().setFocus()
+            self.parent_window.ui.sidebarWidget.layout().addWidget(control_widget)
+            self.parent_window.setFocus()
 
         if self.thread is None:
             self.init_thread()
@@ -377,10 +379,10 @@ class VideoDeviceManager(DeviceManager):
             self._device = None
             self.init_device()
             if self.analyzer.do_track:
-                self.analyzer.init_tracker()
+                self.analyzer.init_tracker(self.frame_size)
         if self.video_control_widget:
             self.video_control_widget.ui.playButton.setEnabled(False)
-            self.video_control_widget.ui.pauseButton(True)
+            self.video_control_widget.ui.pauseButton.setEnabled(True)
         self.is_paused = False
 
     # noinspection PyMethodOverriding
@@ -391,7 +393,7 @@ class VideoDeviceManager(DeviceManager):
         if val != State.ACQUIRING:
             if self.video_control_widget:
                 self.video_control_widget.ui.playButton.setEnabled(False)
-                self.video_control_widget.ui.pauseButton(False)
+                self.video_control_widget.ui.pauseButton.setEnabled(False)
 
     def video_last_frame(self):
         return self._device.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -416,6 +418,9 @@ class VideoDeviceManager(DeviceManager):
         # def query_frame_(self):
         # print("starts querying")
         # print("paused: {}, capturing: {}, acquiring: {}".format(self.paused, self.capturing, self.acquiring))
+
+        if self.to_release:
+            self.release()
 
         if self.state in (State.NOT_READY, State.READY) or self.is_paused is True or \
                 self.analyzer.trial_state == self.analyzer.TrialState.IDLE or \
@@ -447,9 +452,6 @@ class VideoDeviceManager(DeviceManager):
         else:
             self.video_finished_signal.emit()
             self.state = State.NOT_READY
-
-        if self.to_release:
-            self.release()
 
     @property
     def display_frame_size(self):
@@ -524,9 +526,9 @@ class VideoDeviceManager(DeviceManager):
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30
 
-    def __init__(self, camera_id=0, parent=None, session_file=None, analyzer=None):
+    def __init__(self, camera_id=0, parent_window=None, session_file=None, analyzer=None):
         self.camera_id = camera_id
-        super(CameraDeviceManager, self).__init__(parent=parent, analyzer=analyzer)
+        super(CameraDeviceManager, self).__init__(parent_window=parent_window, analyzer=analyzer)
         self.init_thread()
         self.state = State.READY
 
@@ -535,10 +537,10 @@ class CameraDeviceManager(DeviceManager):
         # noinspection PyArgumentList
         self._device = cv2.VideoCapture(0)
         # cd = cv2.VideoCapture(self.camera_id)
-        if not cd.isOpened():
+        if not self._device.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
-        return cd
+        return None
 
     @QtCore.pyqtSlot()
     def query_frame(self):
