@@ -176,7 +176,6 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             s['sequence_nr'] = self.cur_trial
             s['run_nr'] = self.cur_run
 
-            print('get scheme, cur_trial: ', self.cur_trial)
         except KeyError:
             raise ValueError("trial not present")
         return s

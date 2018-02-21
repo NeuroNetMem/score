@@ -79,7 +79,6 @@ class TrialDialog(QtWidgets.QDialog):
         return self.obj_idxs[self.ui.objectComboBox.currentIndex()]
 
     def set_values(self, values):
-        print(values['trial'])
         self.ui.sessionLineEdit.setText(str(values['session']))
         self.ui.runLineEdit.setText(str(values['run_nr']))
         self.ui.trialLineEdit.setText(str(values['sequence_nr']))

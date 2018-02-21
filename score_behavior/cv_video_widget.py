@@ -5,6 +5,10 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class OpenCVQImage(QtGui.QImage):
     def __init__(self, opencv_bgr_img):
@@ -59,8 +63,12 @@ class CVVideoWidget(QtWidgets.QWidget):
 
     def sizeHint(self):
         if self._camera_device:
-            w, h = self._camera_device.display_frame_size
-            return QtCore.QSize(w, h)
+            try:
+                w, h = self._camera_device.display_frame_size
+                return QtCore.QSize(w, h)
+            except AttributeError:
+                logger.debug("display frame size calculation failed, camera device {}".format(self._camera_device))
+                return QtCore.QSize(800, 600)
         else:
             return QtCore.QSize(800, 600)
 

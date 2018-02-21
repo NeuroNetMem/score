@@ -58,6 +58,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def device(self, dev):
         self._device = dev
         if dev:
+            self.ui.cameraWidget.set_device(self.device)
             # noinspection PyUnresolvedReferences
             self.ui.cameraWidget.key_action.connect(self._analyzer.obj_state_change)
             self.ui.mirroredButton.setEnabled(True)
@@ -102,7 +103,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         else:
             self.log.info("resetting acquisition device")
 
-        self.ui.cameraWidget.set_device(self.device)
+
 
     @QtCore.pyqtSlot()
     def video_size_changed(self):
@@ -132,9 +133,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.playButton.setEnabled(True)
             self.ui.pauseButton.setEnabled(False)
             self.ui.actionStop_Acquisition.setEnabled(False)
-            self.ui.scaleComboBox.setEnabled(False)
-            self.ui.rotateComboBox.setEnabled(False)
-            self.ui.mirroredButton.setEnabled(False)
+            self.ui.scaleComboBox.setEnabled(True)
+            self.ui.rotateComboBox.setEnabled(True)
+            self.ui.mirroredButton.setEnabled(True)
         elif state == DeviceState.ACQUIRING:
             self.ui.playButton.setEnabled(False)
             self.ui.pauseButton.setEnabled(True)
@@ -212,10 +213,11 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
                                                            os.getcwd(), "CSV (*.csv)")
         session_file = dialog_out[0]
         if session_file:
-            self.log.info('Session file opened: {}'.format(self.session_file))
             self.session_file = session_file
+            self.log.info('Session file opened: {}'.format(self.session_file))
         else:
             self.log.info('No session file given. Doing nothing.')
+        self.get_camera_id_to_open()
 
     # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):
@@ -256,6 +258,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer.set_session(self.session_file, mode='video')
         self._analyzer.error_signal.connect(self.error_and_close)
         self.device = VideoDeviceManager(analyzer=self._analyzer, parent_window=self)
+        self.ui.scaleComboBox.addItems(self.device.scales_possible)
+        self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
+        self.ui.scaleComboBox.setEnabled(True)
+        self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
         # self.ui.sourceLabel.setText("File: " + os.path.basename(video_filename))
 
         self.ui.actionSave_to.setEnabled(True)

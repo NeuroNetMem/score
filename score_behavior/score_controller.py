@@ -39,7 +39,7 @@ class DeviceManager(QtCore.QObject):
     yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
 
     scales_possible = ['0.5', '0.8', '1', '1.5', '2']
-    scale_init = 1
+    scale_init = 2
     rotate_options = [0, 90, 180, 270]
     rotate_functions = {0: (lambda img: img),
                         90: (lambda img: cv2.flip(cv2.transpose(img), 1)),
@@ -76,7 +76,7 @@ class DeviceManager(QtCore.QObject):
         # this flag to close the manager
         self.to_release = False
         self._device = None  # the underlying video source device
-        self._device = self.init_device()
+        self.init_device()
 
         self.start_time = self.get_absolute_time()
         self._frame_no = 0
@@ -334,10 +334,12 @@ class VideoDeviceManager(DeviceManager):
         logger.info("Loading video in file {}".format(self.video_in_file_name))
         # noinspection PyArgumentList
         self._device = cv2.VideoCapture(self.video_in_file_name)
+
         if not self._device.isOpened():
             logger.error("Could not open video file {}".format(self.video_in_file_name))
             raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
 
+        logger.debug("video has a size of {} and {} fps".format(self.frame_size, self.fps))
         if self.video_control_widget is None:
             control_widget = VideoControlWidget()
             control_widget.ui.playButton.clicked.connect(self.play_action)
@@ -430,6 +432,7 @@ class VideoDeviceManager(DeviceManager):
         ret, frame = self._device.read()
 
         if ret:
+            logger.debug("acquiring frame of shape {}".format(frame.shape))
             self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
             self.last_frame = frame
             self.frame_pos_signal.emit(self.frame_no)
@@ -447,8 +450,9 @@ class VideoDeviceManager(DeviceManager):
                 if self.out:
                     logger.debug("saving frame of shape {}".format(str(frame.shape)))
                     self.out.write(frame)
-
-            self.new_frame.emit(frame)
+                frame_display = cv2.resize(np.copy(frame), (int(w * self.scale), int(h * self.scale)),
+                                       interpolation=cv2.INTER_AREA)
+                self.new_frame.emit(frame_display)
         else:
             self.video_finished_signal.emit()
             self.state = State.NOT_READY
@@ -536,6 +540,7 @@ class CameraDeviceManager(DeviceManager):
         # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
         self._device = cv2.VideoCapture(0)
+        logger.debug("OpenCV Capture for Camera started")
         # cd = cv2.VideoCapture(self.camera_id)
         if not self._device.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))
@@ -554,7 +559,6 @@ class CameraDeviceManager(DeviceManager):
                     self.analyzer.trial_state = self.analyzer.TrialState.READY
                 else:
                     pass
-                    # self.trial_state = TrialState.COMPLETED
                 self.splash_screen_countdown -= 1
             else:
                 ret, frame = self._device.read()
@@ -588,11 +592,14 @@ class CameraDeviceManager(DeviceManager):
 
     @property
     def display_frame_size(self):
-        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
-        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
-        if self.rotate_angle in (90, 270):
-            w, h = h, w
-        return int(w), int(h)
+        if self._device:
+            w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
+            h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
+            if self.rotate_angle in (90, 270):
+                w, h = h, w
+            return int(w), int(h)
+        else:
+            return 800, 600
 
     @property
     def frame_size(self):
@@ -608,7 +615,7 @@ class CameraDeviceManager(DeviceManager):
         return fps
 
     def get_cur_time(self):
-        if self.trial_state != self.TrialState.ONGOING:
+        if self.analyzer.trial_state != self.analyzer.TrialState.ONGOING:
             return datetime.timedelta(0)
         else:
             return datetime.datetime.now() - self.start_time
