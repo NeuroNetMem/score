@@ -104,8 +104,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         else:
             self.log.info("resetting acquisition device")
 
-
-
     @QtCore.pyqtSlot()
     def video_size_changed(self):
         (w, h) = self.device.display_frame_size

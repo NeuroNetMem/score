@@ -217,7 +217,7 @@ class DeviceManager(QtCore.QObject):
         self.yes_no = i
 
     def setup_input_for_trial(self):
-        pass # do nothing if it's not a video device
+        pass  # do nothing if it's not a video device
 
     def open_video_out_files(self, filename=None, filename_raw=None):
         import os
@@ -341,7 +341,7 @@ class VideoDeviceManager(DeviceManager):
 
     speed_possible = ['0.5', '0.8', '1', '1.2', '1.5', '2']
 
-    def __init__(self, video_file=None, parent_window=None, session_file=None, analyzer=None):
+    def __init__(self, video_file=None, parent_window=None, analyzer=None):
         self.video_in_file_name = video_file
         super(VideoDeviceManager, self).__init__(parent_window=parent_window, analyzer=analyzer)
         self.save_raw_video = False
@@ -464,7 +464,7 @@ class VideoDeviceManager(DeviceManager):
                     logger.debug("saving frame of shape {}".format(str(frame.shape)))
                     self.out.write(frame)
                 frame_display = cv2.resize(np.copy(frame), (int(w * self.scale), int(h * self.scale)),
-                                       interpolation=cv2.INTER_AREA)
+                                           interpolation=cv2.INTER_AREA)
                 self.new_frame.emit(frame_display)
         else:
             self.video_finished_signal.emit()
@@ -543,7 +543,7 @@ class VideoDeviceManager(DeviceManager):
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30
 
-    def __init__(self, camera_id=0, parent_window=None, session_file=None, analyzer=None):
+    def __init__(self, camera_id=0, parent_window=None, analyzer=None):
         self.camera_id = camera_id
         super(CameraDeviceManager, self).__init__(parent_window=parent_window, analyzer=analyzer)
         self.init_thread()

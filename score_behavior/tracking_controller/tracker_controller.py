@@ -26,9 +26,6 @@ class TrackerController(QtCore.QObject):
         self.widget.ui.thresholdSpinBox.valueChanged.connect(self.set_tracker_threshold)
         self.widget.ui.speedSpinBox.valueChanged.connect(self.set_speed_threshold)
 
-
-        # TODO set initial value for thresholds in widget
-
     @property
     def tracker(self):
         return self._tracker

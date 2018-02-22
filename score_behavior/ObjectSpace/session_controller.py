@@ -3,6 +3,11 @@ from PyQt5 import QtWidgets
 
 
 class SessionController(QtCore.QObject):
+
+    def __init__(self, parent=None):
+        super(SessionController, self).__init__(parent=parent)
+        self.comments_dialog = None
+
     @QtCore.pyqtSlot()
     def get_comments(self):
         # noinspection PyArgumentList
