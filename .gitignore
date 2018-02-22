@@ -1,4 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
+*_ui.py
+*_rc.py
+
 ### Qt template
 # C++ objects and libs
 
