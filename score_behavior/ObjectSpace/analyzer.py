@@ -28,10 +28,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         self.obj_state = {}
         self.device = device
         self.init_obj_state()
-        self.track_start_x = -1
-        self.track_start_y = -1
-        self.track_end_x = -1
-        self.track_end_y = -1
+
         self.dialog = None
         self.r_keys = list(self.rect_coord.keys())
 
@@ -85,32 +82,3 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
 
-    @QtCore.pyqtSlot(int, int)
-    def mouse_press_action(self, x, y):
-        self.track_start_x = x
-        self.track_start_y = y
-        self.start_animal_init(x, y)
-
-    @QtCore.pyqtSlot(int, int)
-    def mouse_move_action(self, x, y):
-        if x == -1:
-            self.track_start_x = -1
-            self.track_start_y = -1
-            self.start_animal_init(-1, -1)
-        else:
-            self.track_end_x = x
-            self.track_end_y = y
-            self.update_animal_init(x, y)
-
-    @QtCore.pyqtSlot(int, int)
-    def mouse_release_action(self, x, y):
-        if self.track_start_x == -1:
-            return
-        if x == -1:
-            self.track_start_x = -1
-            self.track_start_y = -1
-            self.start_animal_init(-1, -1)
-        else:
-            self.track_end_x = x
-            self.track_end_y = y
-            self.complete_animal_init(x, y, frame_no=self.device.frame_no)

@@ -88,7 +88,7 @@ class CVVideoWidget(QtWidgets.QWidget):
     def paintEvent(self, e):
         if self._frame is None:
             painter = QtGui.QPainter(self)
-            painter.fillRect(self.rect(), QtCore.Qt.green)
+            painter.fillRect(self.rect(), QtCore.Qt.darkGray)
             return
         painter = QtGui.QPainter(self)
         painter.drawImage(QtCore.QPoint(0, 0), OpenCVQImage(self._frame))

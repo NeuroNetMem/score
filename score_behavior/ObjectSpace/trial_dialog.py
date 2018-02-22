@@ -34,6 +34,7 @@ class TrialDialog(QtWidgets.QDialog):
         self.obj_idxs = list(self.object_files.keys())
 
         str_obj_idxs = [str(i) for i in self.obj_idxs]
+        self.log.debug("adding objects {}".format(str_obj_idxs))
         self.ui.objectComboBox.addItems(str_obj_idxs)
 
         self.set_values(trial_params)
@@ -71,7 +72,7 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.location2ComboBox.setEnabled(not ro)
 
     @QtCore.pyqtSlot(int)
-    def update_object_change(self, _):
+    def update_object_change(self, new_object):
         self.set_image()
         self.update()
 
@@ -86,7 +87,15 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.subjectTrialLineEdit.setText(str(values['trial']))
         self.ui.location1ComboBox.setCurrentIndex(self.locations.index(values['loc_1']))
         self.ui.location2ComboBox.setCurrentIndex(self.locations.index(values['loc_2']))
+        self.ui.location1ComboBox.currentIndexChanged.connect(self.change_location)
+        self.ui.location2ComboBox.currentIndexChanged.connect(self.change_location)
         self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
+        px = self.make_location_map(values)
+        self.ui.objLocLabel.setPixmap(px)
+
+    @QtCore.pyqtSlot(int)
+    def change_location(self, _):
+        values = self.get_values()
         px = self.make_location_map(values)
         self.ui.objLocLabel.setPixmap(px)
 

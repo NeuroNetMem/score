@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # - cur_scheduled_run: the ordinal number of run as per experiment sheet. That is, the serial number of the trial
 #   involving all animals as planned (in the sheets, by the index 'run_nr'
 # - cur_actual_run: the ordinal number of run as performed. This may be different from the above if some runs are
-#   skipped or added
+#   skipped or added.
 # - trial: the per subject trial number, which here is only a run feature, and should not be used as an index
 
 
@@ -29,7 +29,7 @@ class SessionManager:
         self.video_in_source = None
         self.video_in_glob = None
         self.extra_event_columns = []
-        self.extra_trial_columns = []
+        self.extra_trial_columns = ['loc_1', 'loc_2', 'obj']
         self.object_dir = None
         self.read_config()
 
@@ -93,8 +93,10 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
         if not extra_trial_columns:
             extra_trial_columns = []
-        self.extra_trial_columns.extend(extra_trial_columns)
+        logger.debug("Extra trial columns 1 are {}".format(self.extra_trial_columns))
 
+        self.extra_trial_columns.extend(extra_trial_columns)
+        logger.debug("Extra trial columns are {}".format(self.extra_trial_columns))
         self.open_result_file()
         self.open_log_file()
 
@@ -134,9 +136,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
     def read_config(self):
         config_dict = get_config_section("data_manager")
         if "extra_trial_columns" in config_dict:
-            self.extra_trial_columns = config_dict["extra_trial_columns"]
+            self.extra_trial_columns.extend(config_dict["extra_trial_columns"])
         if "extra_event_columns" in config_dict:
-            self.extra_event_columns = config_dict["extra_event_columns"]
+            self.extra_event_columns.extend(config_dict["extra_event_columns"])
         if "video_in_source" in config_dict:
             self.video_in_source = config_dict["video_in_source"]
         if "video_in_glob" in config_dict:
@@ -156,6 +158,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
                                     'video_out_raw_filename'))
         self.result_columns.extend(self.extra_trial_columns)
         logger.info("Attempting to open result file {}".format(self.result_file))
+        logger.info("with Columns {}".format(self.result_columns))
         if os.path.exists(self.result_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.result_file, self.result_file + '.bk')
@@ -219,23 +222,27 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         df_update = pd.DataFrame.from_dict(info, orient='index')
         df_update = df_update.transpose()
         logger.info("updating trial {}".format(info['sequence_nr']))
-        logger.info("update info: {}".format(str(info)))
         assert info['sequence_nr'] == self.cur_actual_run
 
         df_update.set_index('sequence_nr', inplace=True)
         self.trials_results.loc[info['sequence_nr']] = np.NaN
-        self.trials_results.update(df_update)
+        logger.debug("update info: {}".format(str(info)))
+        logger.info("update df: {}".format(str(df_update)))
 
         # complete the results dataframe with info from the scheme dataframe
         r = self.trials_results.loc[info['sequence_nr']].copy()
         r.update(self.scheme.loc[self.cur_scheduled_run])
         self.trials_results.loc[info['sequence_nr']] = r
+        logger.debug("Trials_results before: \n{}".format(str(self.trials_results)))
+        self.trials_results.update(df_update)
+        logger.debug("Trials_results after: \n{}".format(str(self.trials_results)))
 
     def set_trial_finished(self, video_out_filename, video_out_raw_filename):
         if self.comments:
-            self.trials_results.loc[self.cur_actual_run]['comments'] = self.comments
-        self.trials_results.loc[self.cur_actual_run]['video_out_filename'] = os.path.basename(video_out_filename)
-        self.trials_results.loc[self.cur_actual_run]['video_out_raw_filename'] = os.path.basename(video_out_raw_filename)
+            self.trials_results.loc[(self.cur_actual_run, 'comments')] = self.comments
+        self.trials_results.loc[(self.cur_actual_run, 'video_out_filename')] = os.path.basename(video_out_filename)
+        self.trials_results.loc[(self.cur_actual_run, 'video_out_raw_filename')] = \
+            os.path.basename(video_out_raw_filename)
         self.trials_results.to_csv(self.result_file)
         self.event_log.to_csv(self.event_log_file)
         logger.info("finalized trial {}".format(self.cur_actual_run))

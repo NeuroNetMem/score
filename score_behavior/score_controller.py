@@ -31,7 +31,6 @@ class DeviceManager(QtCore.QObject):
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
     state_changed_signal = QtCore.pyqtSignal(State, State, name="CameraDevice.state_changed_signal")
     size_changed_signal = QtCore.pyqtSignal(name="CameraDevice.size_changed_signal")
-    session_set_signal = QtCore.pyqtSignal(bool, name="CameraDevice.session_set")
     # only to set the label on the window
     video_out_file_changed_signal = QtCore.pyqtSignal(str, name='CameraDevice.video_out_file_changed_signal')
     error_signal = QtCore.pyqtSignal(str, name='CameraDevice.error_signal')
@@ -63,7 +62,6 @@ class DeviceManager(QtCore.QObject):
 
         self.splash_screen = None
         self.splash_screen_countdown = 0
-        self.analyzer = None
         self.dialog = None
         # noinspection PyUnresolvedReferences
         # initialize output

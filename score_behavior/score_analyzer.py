@@ -8,6 +8,7 @@ import logging
 import datetime
 from score_behavior.tracking.tracker import Tracker
 from score_behavior.ObjectSpace.session_manager import SessionManager
+from score_behavior.ObjectSpace.session_controller import SessionController
 from score_behavior.global_defs import DeviceState as State
 from score_behavior.tracking_controller.tracker_controller import TrackerController
 from score_behavior.score_config import get_config_section
@@ -36,6 +37,8 @@ class FrameAnalyzer(QtCore.QObject):
         self.csv_out = None
         self.tracker = None
         self.tracker_controller = None
+        self.session_controller = None
+
         self._trial_state = self.TrialState.IDLE
 
         self.animal_start_x = -1
@@ -49,6 +52,10 @@ class FrameAnalyzer(QtCore.QObject):
         self.r_keys = []
         self.dialog = None
         self.video_out_raw_filename = None
+        self.track_start_x = -1
+        self.track_start_y = -1
+        self.track_end_x = -1
+        self.track_end_y = -1
 
     def read_config(self):
         d = get_config_section("analyzer")
@@ -103,6 +110,10 @@ class FrameAnalyzer(QtCore.QObject):
             try:
                 self.session = SessionManager(filename, initial_trial=init_trial, min_free_disk_space=25, mode=mode,
                                               r_keys=self.r_keys)
+                self.session_controller = SessionController(parent=self.parent(), data=self.session.scheme)
+                self.parent().ui.sidebarWidget.layout().addWidget(self.session_controller.widget)
+                self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
+                self.parent().setFocus()
             except Exception as e:
                 logger.error("Could not start session from file {}. RunTimeError {}".format(filename, str(e)))
                 self.error_signal.emit(str(e))
@@ -144,6 +155,8 @@ class FrameAnalyzer(QtCore.QObject):
         self.make_splash_screen(trial_info)
         self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
         logger.debug("Finished setting up Trial {}".format(trial_info['sequence_nr']))
+        if self.session_controller:
+            self.session_controller.set_current_row(trial_info['run_nr'])
         self.trial_state = self.TrialState.READY
 
     def add_trial(self):
@@ -157,7 +170,11 @@ class FrameAnalyzer(QtCore.QObject):
         if self.session:
             logger.debug("Skipping trial")
             self.session.skip_trial()
-            self.dialog.set_scheme(self.session.get_scheme_trial_info())
+            if self.dialog:
+                self.dialog.set_scheme(self.session.get_scheme_trial_info())
+            if self.session_controller:
+                trial_info = self.session.get_trial_results_info
+                self.session_controller.set_current_row(trial_info['run_nr'])
 
     def finalize_trial(self):
         if self.trial_state not in (self.TrialState.IDLE, self.TrialState.READY):
@@ -166,8 +183,8 @@ class FrameAnalyzer(QtCore.QObject):
                 t = self.device.get_cur_time()
                 ts = t.seconds + 1.e-6 * t.microseconds
                 self.session.set_event(ts, self.device.frame_no, 'TR0')
+                self.process_message('TR1')
                 self.trial_state = self.TrialState.COMPLETED
-                self.process_message('TR0')
             self.device.close_video_out_files()
             self.session.analyze_trial()
             self.session.set_trial_finished(self.video_out_filename, self.video_out_raw_filename)
@@ -179,7 +196,8 @@ class FrameAnalyzer(QtCore.QObject):
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
         font = cv2.FONT_HERSHEY_DUPLEX
-        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr'])
+        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr']) + " Schedule " + \
+                                                                          str(trial_info['run_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width-t_size[0])//2, 15
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
@@ -273,8 +291,9 @@ class FrameAnalyzer(QtCore.QObject):
         logger.info(log_msg)
         self.animal_end_x = x
         self.animal_end_y = y
-        self.tracker.add_animal(self.animal_start_x, self.animal_start_y,
-                                self.animal_end_x, self.animal_end_y)
+        self.tracker.add_animal(int(self.animal_start_x / self.device.scale),
+                                int(self.animal_start_y / self.device.scale),
+                                int(self.animal_end_x / self.device.scale), int(self.animal_end_y / self.device.scale))
         self.animal_start_x = -1
         self.animal_start_y = -1
 
@@ -282,6 +301,38 @@ class FrameAnalyzer(QtCore.QObject):
         if self.tracker:
             self.tracker.track(frame)
             if self.animal_start_x != -1:
-                yellow = (255, 255, 0)
-                cv2.line(frame, (self.animal_start_x, self.animal_start_y),  # TODO check why the line is misaligned
-                         (self.animal_end_x, self.animal_end_y), yellow, 2)
+                yellow = (0, 255, 255)
+                cv2.line(frame, (int(self.animal_start_x / self.device.scale),
+                                 int(self.animal_start_y / self.device.scale)),
+                                (int(self.animal_end_x / self.device.scale),
+                                 int(self.animal_end_y / self.device.scale)), yellow, 2)
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_press_action(self, x, y):
+        self.track_start_x = x
+        self.track_start_y = y
+        self.start_animal_init(x, y)
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_move_action(self, x, y):
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.update_animal_init(x, y)
+
+    @QtCore.pyqtSlot(int, int)
+    def mouse_release_action(self, x, y):
+        if self.track_start_x == -1:
+            return
+        if x == -1:
+            self.track_start_x = -1
+            self.track_start_y = -1
+            self.start_animal_init(-1, -1)
+        else:
+            self.track_end_x = x
+            self.track_end_y = y
+            self.complete_animal_init(x, y, frame_no=self.device.frame_no)

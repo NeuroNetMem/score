@@ -257,6 +257,16 @@
             </layout>
            </widget>
           </item>
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="pixmap">
+             <pixmap resource="resources/icons/logo.qrc">:/logo/logo1.png</pixmap>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -704,6 +714,8 @@
    <header>score_behavior.cv_video_widget</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="resources/icons/logo.qrc"/>
+ </resources>
  <connections/>
 </ui>

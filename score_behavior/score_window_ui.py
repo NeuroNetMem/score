@@ -98,6 +98,11 @@ class Ui_MainWindow(object):
         spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem2, 3, 2, 1, 1)
         self.horizontalLayout_2.addWidget(self.widget1)
+        self.label_7 = QtWidgets.QLabel(self.widget)
+        self.label_7.setText("")
+        self.label_7.setPixmap(QtGui.QPixmap(":/logo/logo1.png"))
+        self.label_7.setObjectName("label_7")
+        self.horizontalLayout_2.addWidget(self.label_7)
         self.verticalLayout.addWidget(self.widget)
         self.groupBox1 = QtWidgets.QGroupBox(self.verticalWidget)
         self.groupBox1.setMaximumSize(QtCore.QSize(16777215, 60))
@@ -320,6 +325,7 @@ class Ui_MainWindow(object):
         self.actionStop_Acquisition.setText(_translate("MainWindow", "Stop Acquisition"))
 
 from score_behavior.cv_video_widget import CVVideoWidget
+import score_behavior.logo_rc
 
 if __name__ == "__main__":
     import sys
