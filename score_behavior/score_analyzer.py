@@ -131,7 +131,7 @@ class FrameAnalyzer(QtCore.QObject):
         self.start_trial_dialog()
 
         if self.dialog.exit_status():
-            self.session.set_trial_info(self.dialog.get_values())
+            self.session.set_trial_results_info(self.dialog.get_values())
         else:
             self.device.state = State.READY
             return
@@ -140,7 +140,7 @@ class FrameAnalyzer(QtCore.QObject):
         self.video_out_filename, self.video_out_raw_filename = self.session.get_video_out_file_name_for_trial()
         self.device.open_video_out_files(self.video_out_filename, self.video_out_raw_filename)
         self.session.set_comments('')
-        trial_info = self.session.get_trial_info()
+        trial_info = self.session.get_trial_results_info()
         self.make_splash_screen(trial_info)
         self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
         logger.debug("Finished setting up Trial {}".format(trial_info['sequence_nr']))

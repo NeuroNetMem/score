@@ -111,7 +111,7 @@ class DeviceManager(QtCore.QObject):
         if self.analyzer.trial_duration_seconds:
             rem_time = self.analyzer.trial_duration_seconds - self.get_cur_time()
             rds = self.timedelta_to_string(rem_time)
-            logger.debug("Remaining time is {}, cur time is {}".format(rds, self.get_cur_time()))
+            # logger.debug("Remaining time is {}, cur time is {}".format(rds, self.get_cur_time()))
 
             self.time_remaining_signal.emit(rds)
 
