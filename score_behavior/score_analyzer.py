@@ -295,6 +295,11 @@ class FrameAnalyzer(QtCore.QObject):
         self.animal_start_x = -1
         self.animal_start_y = -1
 
+    @QtCore.pyqtSlot(str)
+    def set_comments(self, comments):
+        if self.session:
+            self.session.set_comments(comments)
+
     def process_frame(self, frame):
         if self.tracker:
             position_data = self.tracker.track(frame)
