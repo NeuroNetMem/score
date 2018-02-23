@@ -3,9 +3,10 @@
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
-import logging
 import os
 import sys
+import traceback
+import io
 
 from score_behavior import GIT_VERSION
 # noinspection PyUnresolvedReferences
@@ -14,6 +15,10 @@ from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 from score_behavior.global_defs import DeviceState
 from score_behavior.score_config import config_init, get_config_section, config_dict
+
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class ScorerMainWindow(QtWidgets.QMainWindow):
@@ -285,10 +290,37 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         event.accept()
 
 
+def excepthook(excType, excValue, tracebackobj):
+    """
+    Global function to catch unhandled exceptions.
+
+    @param excType exception type
+    @param excValue exception value
+    @param tracebackobj traceback object
+    """
+    notice = """An unhandled exception occurred. Please report the problem\n"""
+
+    tbinfofile = io.StringIO()
+    traceback.print_tb(tracebackobj, None, tbinfofile)
+    tbinfofile.seek(0)
+    tbinfo = tbinfofile.getvalue()
+    errmsg = '{}: \n{}'.format(str(excType), str(excValue))
+    sections = [notice, errmsg, tbinfo]
+    msg = '\n'.join(sections)
+    try:
+        logger.error(msg)
+    except IOError:
+        pass
+    errorbox = QtWidgets.QMessageBox()
+    errorbox.setText(str(notice) + str(msg))
+    errorbox.exec_()
+    sys.exit(-1)
+
+
 def _main():
 
     import argparse
-    logging.basicConfig(filename='scorer_log.log', level=logging.INFO, filemode='w',
+    logging.basicConfig(filename='score_log.log', level=logging.INFO, filemode='w',
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Starting Score with git version {}'.format(GIT_VERSION))
 
@@ -331,6 +363,8 @@ def _main():
     except Exception as e:
         logging.error("Uncaught exception: {}".format(str(e)))
 
+
+sys.excepthook = excepthook
 
 if __name__ == '__main__':
     _main()
