@@ -113,6 +113,10 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session_controller = SessionController(parent=self.parent(), data=self.session.scheme)
                 self.parent().ui.sidebarWidget.layout().addWidget(self.session_controller.widget)
                 self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
+                self.session_controller.comments_inserted_signal.connect(self.set_comments)
+                self.session_controller.skip_trial_signal.connect(self.skip_trial)
+                self.session_controller.add_trial_signal.connect(self.add_trial)
+
                 self.parent().setFocus()
             except Exception as e:
                 logger.error("Could not start session from file {}. RunTimeError {}".format(filename, str(e)))
@@ -173,8 +177,8 @@ class FrameAnalyzer(QtCore.QObject):
             if self.dialog:
                 self.dialog.set_scheme(self.session.get_scheme_trial_info())
             if self.session_controller:
-                trial_info = self.session.get_trial_results_info
-                self.session_controller.set_current_row(trial_info['run_nr'])
+                csr = self.session.cur_scheduled_run
+                self.session_controller.set_current_row(csr)
 
     def finalize_trial(self):
         if self.trial_state not in (self.TrialState.IDLE, self.TrialState.READY):
@@ -299,7 +303,13 @@ class FrameAnalyzer(QtCore.QObject):
 
     def process_frame(self, frame):
         if self.tracker:
-            self.tracker.track(frame)
+            position_data = self.tracker.track(frame)
+            if position_data:
+                for px in position_data:
+                    px['cur_time'] = self.device.get_cur_time()
+                    px['frame'] = self.device.frame_no
+                self.session.set_position_data(position_data)
+
             if self.animal_start_x != -1:
                 yellow = (0, 255, 255)
                 cv2.line(frame, (int(self.animal_start_x / self.device.scale),

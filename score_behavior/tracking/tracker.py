@@ -3,7 +3,7 @@ import cv2
 import math
 from enum import Enum
 
-import score_behavior.geometry as geometry
+import score_behavior.tracking.geometry as geometry
 from score_behavior.score_config import get_config_section
 import logging
 
@@ -319,7 +319,6 @@ class Animal:
         """tracking a single animal"""
         # source is the original frame, raw_matrix the subtracted one
 
-        debug = None
         self.prev_centroid = self.centroid
         logger.log(5, "centroids are " + str(centroids))
         self.centroid = self.find_closest_centroid(centroids)
@@ -448,7 +447,12 @@ class Animal:
 
         rows, cols = raw_matrix.shape[:2]
 
-        return debug
+        position_data = {'id': id, 'centroid_x': self.centroid[0], 'centroid_y':self.centroid[1],
+                         'head_x': self.head[0], 'head_y': self.head[1],
+                         'front_x': self.front[0], 'front_y': self.front[1],
+                         'back_x': self.back[0], 'back_y': self.back[1]}
+
+        return position_data
 
 
 class TrackingFlowElement:
@@ -608,12 +612,12 @@ class Tracker:
     # noinspection PyUnusedLocal
     def track_animals(self, matrix, frame_time):
         """loop over animals and call the tracker in the animal class"""
-        debug = []
+        position_data = []
 
         for a in self.animals:
-            debug1 = a.track(matrix, self.animals, self.centroids, frame_time)
+            position_data.append(a.track(matrix, self.animals, self.centroids, frame_time))
 
-        return debug
+        return position_data
 
     def grab_background(self):
         self.background_countdown = self.background_frames
@@ -667,14 +671,7 @@ class Tracker:
         border = self.config.skeletonization_border
         frame_gr_resized = cv2.copyMakeBorder(frame_gr_resized, border, border, border, border, cv2.BORDER_CONSTANT, 0)
 
-        _ = self.track_animals(frame_gr_resized, frame_time)
-        #
-        # # debug = debug + debug1
-        #
-        # positions = self.get_animal_positions()
-        #
-        # tracking_flow_element = TrackingFlowElement(frame_time, positions, frame_gr, debug)
-        tracking_flow_element = None
+        position_data = self.track_animals(frame_gr_resized, frame_time)
 
         frame_display = frame_gr_resized[border:-border, border:-border]
 
@@ -690,7 +687,7 @@ class Tracker:
             cv2.circle(frame, tuple(self.centroids[ix, :].astype(np.uint16)), 2, (0, 0, 255))
         self.draw_animals(frame)
         # TODO output data!
-        return tracking_flow_element
+        return position_data
 
     def project(self, pos):
         r = geometry.Point(pos.x * self.image_scale_factor, pos.y * self.image_scale_factor)

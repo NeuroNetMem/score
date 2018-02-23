@@ -85,6 +85,10 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.event_log_columns = None
         self.event_log = None
 
+        self.tracker_file = None
+        self.tracker_columns = None
+        self.tracker_log = None
+
         self.comments = ''
 
         if not extra_event_columns:
@@ -99,6 +103,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         logger.debug("Extra trial columns are {}".format(self.extra_trial_columns))
         self.open_result_file()
         self.open_log_file()
+        self.open_tracker_file()
 
         if r_keys:
             self.r_keys = r_keys
@@ -193,11 +198,34 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.event_log.set_index('wall_time', inplace=True)
         logger.debug("File ready for writing")
 
+    def open_tracker_file(self):
+        import os
+        import shutil
+
+        self.tracker_file = self.get_tracker_file_name()
+        self.tracker_columns = ['frame', 'cur_time', 'id', 'centroid_x', 'centroid_y', 'head_x', 'head_y',
+                                'front_x', 'front_y', 'back_x', 'back_y']
+        logger.info("Attempting to open tracker file {}".format(self.tracker_file))
+        if os.path.exists(self.tracker_file):
+            logger.info("File exists, backing it up")
+            shutil.copyfile(self.tracker_file, self.tracker_file + '.bk')
+            self.tracker_log = pd.DataFrame.from_csv(self.tracker_file, index_col='frame')
+        else:
+            self.tracker_log = pd.DataFrame(columns=self.tracker_columns)
+            self.tracker_log.set_index('frame', inplace=True)
+
     def get_log_file_name(self):
         import os
         dirname = os.path.dirname(self.scheme_file)
         basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         filename = os.path.join(dirname, basename + '_log.csv')
+        return filename
+
+    def get_tracker_file_name(self):
+        import os
+        dirname = os.path.dirname(self.scheme_file)
+        basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
+        filename = os.path.join(dirname, basename + '_track.csv')
         return filename
 
     def get_scheme_trial_info(self):
@@ -245,6 +273,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             os.path.basename(video_out_raw_filename)
         self.trials_results.to_csv(self.result_file)
         self.event_log.to_csv(self.event_log_file)
+        if self.tracker_log:
+            self.tracker_log.to_csv(self.tracker_file)
+
         logger.info("finalized trial {}".format(self.cur_actual_run))
         self.cur_actual_run += 1
         self.cur_scheduled_run += 1
@@ -306,6 +337,13 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         row = [ts, frame_no, self.cur_actual_run, msg, start_stop]
         row.extend(extra_data)
         self.event_log.loc[time.time()] = row
+
+    def set_position_data(self, position_data):
+        for px in position_data:
+            df_update = pd.DataFrame(px, index=[0])
+            df_update.transpose()
+            df_update.set_index('frame', inplace=True)
+            self.tracker_log.update(df_update)
 
     def get_events_for_trial(self, i=None):
         if i is None:
@@ -379,5 +417,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def close(self):
         self.event_log.to_csv(self.event_log_file)
+        if self.tracker_log:
+            self.tracker_log.to_csv(self.tracker_file)
         self.trials_results.to_csv(self.result_file)
         logger.info("Closed csv files")
