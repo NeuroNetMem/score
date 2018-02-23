@@ -203,16 +203,17 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         import shutil
 
         self.tracker_file = self.get_tracker_file_name()
-        self.tracker_columns = ['frame', 'cur_time', 'id', 'centroid_x', 'centroid_y', 'head_x', 'head_y',
+        self.tracker_columns = ['wall_time', 'sequence_nr', 'frame', 'cur_time', 'id', 'centroid_x', 'centroid_y', 'head_x', 'head_y',
                                 'front_x', 'front_y', 'back_x', 'back_y']
         logger.info("Attempting to open tracker file {}".format(self.tracker_file))
         if os.path.exists(self.tracker_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.tracker_file, self.tracker_file + '.bk')
-            self.tracker_log = pd.DataFrame.from_csv(self.tracker_file, index_col='frame')
+            self.tracker_log = pd.DataFrame.from_csv(self.tracker_file, index_col='wall_time')
         else:
             self.tracker_log = pd.DataFrame(columns=self.tracker_columns)
-            self.tracker_log.set_index('frame', inplace=True)
+            self.tracker_log.set_index('wall_time', inplace=True)
+        logger.debug("File ready for writing.")
 
     def get_log_file_name(self):
         import os
@@ -261,9 +262,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         r = self.trials_results.loc[info['sequence_nr']].copy()
         r.update(self.scheme.loc[self.cur_scheduled_run])
         self.trials_results.loc[info['sequence_nr']] = r
-        logger.debug("Trials_results before: \n{}".format(str(self.trials_results)))
         self.trials_results.update(df_update)
-        logger.debug("Trials_results after: \n{}".format(str(self.trials_results)))
 
     def set_trial_finished(self, video_out_filename, video_out_raw_filename):
         if self.comments:
@@ -273,7 +272,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             os.path.basename(video_out_raw_filename)
         self.trials_results.to_csv(self.result_file)
         self.event_log.to_csv(self.event_log_file)
-        if self.tracker_log:
+        if self.tracker_log is not None:
             self.tracker_log.to_csv(self.tracker_file)
 
         logger.info("finalized trial {}".format(self.cur_actual_run))
@@ -339,11 +338,21 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.event_log.loc[time.time()] = row
 
     def set_position_data(self, position_data):
+        import time
         for px in position_data:
-            df_update = pd.DataFrame(px, index=[0])
-            df_update.transpose()
-            df_update.set_index('frame', inplace=True)
-            self.tracker_log.update(df_update)
+            px['sequence_nr'] = self.cur_actual_run
+            # px['wall_time'] = time.time()
+            # df_update = pd.DataFrame(px, index=[0])
+            # df_update.transpose()
+            # df_update.set_index('wall_time', inplace=True)
+            #logger.debug("update is \n{}".format(str(df_update)))
+            # self.tracker_log.loc[time.time()] = df_update
+            #self.tracker_log = self.tracker_log.append(df_update)
+            logger.debug("px columns are {}".format(px.keys()))
+            logger.debug("tracker_log columns are {}".format(self.tracker_log.columns))
+            self.tracker_log.loc[time.time()] = px
+            logger.debug("tracker log data is \n{}".format(str(self.tracker_log)))
+
 
     def get_events_for_trial(self, i=None):
         if i is None:

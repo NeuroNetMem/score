@@ -447,7 +447,7 @@ class Animal:
 
         rows, cols = raw_matrix.shape[:2]
 
-        position_data = {'id': id, 'centroid_x': self.centroid[0], 'centroid_y':self.centroid[1],
+        position_data = {'id': self.id, 'centroid_x': self.centroid[0], 'centroid_y':self.centroid[1],
                          'head_x': self.head[0], 'head_y': self.head[1],
                          'front_x': self.front[0], 'front_y': self.front[1],
                          'back_x': self.back[0], 'back_y': self.back[1]}
