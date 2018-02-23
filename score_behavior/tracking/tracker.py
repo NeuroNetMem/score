@@ -686,7 +686,6 @@ class Tracker:
         for ix in range(self.centroids.shape[0]):
             cv2.circle(frame, tuple(self.centroids[ix, :].astype(np.uint16)), 2, (0, 0, 255))
         self.draw_animals(frame)
-        # TODO output data!
         return position_data
 
     def project(self, pos):

@@ -7,8 +7,8 @@ import numpy as np
 import logging
 import datetime
 from score_behavior.tracking.tracker import Tracker
-from score_behavior.ObjectSpace.session_manager import SessionManager
-from score_behavior.ObjectSpace.session_controller import SessionController
+from score_behavior.ObjectSpace.session_manager import ObjectSpaceSessionManager
+from score_behavior.score_session_controller import SessionController
 from score_behavior.global_defs import DeviceState as State
 from score_behavior.tracking_controller.tracker_controller import TrackerController
 from score_behavior.score_config import get_config_section
@@ -108,8 +108,8 @@ class FrameAnalyzer(QtCore.QObject):
             logger.debug("Attempting to start {} session from file {} and from trial {}".format(self.mode, filename,
                                                                                                 init_trial))
             try:
-                self.session = SessionManager(filename, initial_trial=init_trial, min_free_disk_space=25, mode=mode,
-                                              r_keys=self.r_keys)
+                self.session = ObjectSpaceSessionManager(filename, initial_trial=init_trial, min_free_disk_space=25,
+                                                         mode=mode, r_keys=self.r_keys)
                 self.session_controller = SessionController(parent=self.parent(), data=self.session.scheme)
                 self.parent().ui.sidebarWidget.layout().addWidget(self.session_controller.widget)
                 self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -201,7 +201,7 @@ class FrameAnalyzer(QtCore.QObject):
 
         font = cv2.FONT_HERSHEY_DUPLEX
         str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr']) + " Schedule " + \
-                                                                          str(trial_info['run_nr'])
+            str(trial_info['run_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width-t_size[0])//2, 15
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
@@ -232,12 +232,6 @@ class FrameAnalyzer(QtCore.QObject):
             self.move_to_frame(frame_no)
         self.start_animal_init(start[0], start[1])
         self.complete_animal_init(end[0], end[1], self.frame_no)
-
-    # TODO to session controller
-    @QtCore.pyqtSlot(str)
-    def set_comments(self, comments):
-        if self.session:
-            self.session.set_comments(comments)
 
     def init_tracker(self, frame_size):
         if not self.do_track:
