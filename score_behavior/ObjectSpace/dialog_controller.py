@@ -17,10 +17,12 @@ class TrialDialogController(QtCore.QObject):
         self.dialog = None
         self.ok = False
 
-    def set_scheme(self, scheme):
+    def set_scheme(self, scheme, new_trial=False):
         self.scheme = scheme
+        if new_trial:
+            self.scheme['run_nr'] = 0
         if self.dialog:
-            self.dialog.set_values(scheme)
+            self.dialog.set_values(self.scheme)
 
     def get_values(self):
         return self.dialog.get_values()

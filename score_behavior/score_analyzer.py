@@ -115,11 +115,12 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
                 self.session_controller.comments_inserted_signal.connect(self.set_comments)
                 self.session_controller.skip_trial_signal.connect(self.skip_trial)
-                self.session_controller.add_trial_signal.connect(self.add_trial)
+                self.device.state_changed_signal.connect(self.session_controller.change_state)
 
                 self.parent().setFocus()
             except Exception as e:
-                logger.error("Could not start session from file {}. RunTimeError {}".format(filename, str(e)))
+                import traceback
+                logger.error("Could not start session from file {}  Error {}".format(filename, traceback.format_exc()))
                 self.error_signal.emit(str(e))
                 return -1
 
@@ -167,7 +168,7 @@ class FrameAnalyzer(QtCore.QObject):
         if self.session:
             logger.debug("Adding trial")
             self.session.add_trial()
-            self.dialog.set_scheme(self.session.get_scheme_trial_info())
+            self.dialog.set_scheme(self.session.get_scheme_trial_info(), new_trial=True)
             self.dialog.set_readonly(False)
 
     def skip_trial(self):
@@ -193,6 +194,8 @@ class FrameAnalyzer(QtCore.QObject):
             self.session.analyze_trial()
             self.session.set_trial_finished(self.video_out_filename, self.video_out_raw_filename)
         self.trial_state = self.TrialState.IDLE
+        if self.tracker:
+            self.tracker.delete_all_animals()
 
     def make_splash_screen(self, trial_info):
         width, height = self.device.frame_size
@@ -236,9 +239,11 @@ class FrameAnalyzer(QtCore.QObject):
     def init_tracker(self, frame_size):
         if not self.do_track:
             return
-        self.tracker = Tracker(frame_size)
-        self.tracker_controller = TrackerController(self.tracker, parent=None)
-        self.parent().ui.sidebarWidget.layout().addWidget(self.tracker_controller.widget)
+        if self.tracker is None:
+            self.tracker = Tracker(frame_size)
+        if self.tracker_controller is None:
+            self.tracker_controller = TrackerController(self.tracker, parent=None)
+            self.parent().ui.sidebarWidget.layout().addWidget(self.tracker_controller.widget)
         # if self._analyzer.tracker:
         #     self.ui.sidebarWidget.layout().addWidget(self._analyzer.tracker_controller.widget)
 

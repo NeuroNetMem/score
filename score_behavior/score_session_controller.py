@@ -3,15 +3,14 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 
 from score_behavior.score_session_manager_control import SessionManagerControlWidget
-
+from score_behavior.global_defs import DeviceState as State
 import logging
 logger = logging.getLogger(__name__)
+
 
 class SessionController(QtCore.QAbstractTableModel):
     comments_inserted_signal = QtCore.pyqtSignal(str, name="SessionController.comments_inserted_signal")
     skip_trial_signal = QtCore.pyqtSignal(name="SessionController.skip_trial_signal")
-    add_trial_signal = QtCore.pyqtSignal(name="SessionController.add_trial_signal")
-
 
     def __init__(self, data, parent=None):
         self.columns_to_show = ['subject', 'obj', 'loc_1', 'loc_2']
@@ -27,7 +26,6 @@ class SessionController(QtCore.QAbstractTableModel):
         self.widget.ui.tableView.verticalHeader().setVisible(True)
         self.widget.ui.commentButton.clicked.connect(self.get_comments)
         self.widget.ui.skipTrialButton.clicked.connect(self.skip_trial)
-        self.widget.ui.addTrialButton.clicked.connect(self.add_trial)
         self.current_row = 0
 
     @QtCore.pyqtSlot()
@@ -78,17 +76,25 @@ class SessionController(QtCore.QAbstractTableModel):
         return None
 
     def set_current_row(self, row):
-        ll = list(self._data.index)
-        self.current_row = ll.index(row)
-        self.scroll_to_row(row)
+        if row != 0:
+            ll = list(self._data.index)
+            self.current_row = ll.index(row)
+            self.scroll_to_row(row)
 
     def scroll_to_row(self, row):
         self.widget.ui.tableView.scrollTo(self.index(row, 0), self.widget.ui.tableView.PositionAtCenter)
 
     @QtCore.pyqtSlot()
     def skip_trial(self):
-        self.skip_trial_signal.emit()
+        ok = QtWidgets.QMessageBox.question(self.widget, "Skip trial", "Skip trial. Are you sure?")
+        if ok == QtWidgets.QMessageBox.Yes:
+            self.skip_trial_signal.emit()
 
-    @QtCore.pyqtSlot()
-    def add_trial(self):
-        self.add_trial_signal.emit()
+    @QtCore.pyqtSlot(State)
+    def change_state(self, val):
+        if val == State.ACQUIRING:
+            self.widget.ui.skipTrialButton.setEnabled(False)
+            self.widget.ui.commentButton.setEnabled(True)
+        else:
+            self.widget.ui.skipTrialButton.setEnabled(True)
+            self.widget.ui.commentButton.setEnabled(False)

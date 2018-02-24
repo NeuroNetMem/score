@@ -43,7 +43,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
         self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
         self.ui.actionStop_Acquisition.setEnabled(False)
-
+        self.ui.cameraWidget.setFocusPolicy(QtCore.Qt.ClickFocus)
         self.ui.rawVideoCheckBox.setEnabled(False)
         self.ui.displayTsCheckBox.setChecked(True)
         self.setWindowTitle("Score")
@@ -263,6 +263,8 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer.error_signal.connect(self.error_and_close)
         self.device = VideoDeviceManager(analyzer=self._analyzer, parent_window=self)
         self.device.video_in_changed_signal.connect(self.ui.sourceLabel.setText)
+        self.device.init_device()
+
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
@@ -364,7 +366,7 @@ def _main():
         logging.error("Uncaught exception: {}".format(str(e)))
 
 
-sys.excepthook = excepthook
+# sys.excepthook = excepthook
 
 if __name__ == '__main__':
     _main()

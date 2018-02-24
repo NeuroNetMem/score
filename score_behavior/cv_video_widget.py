@@ -93,21 +93,21 @@ class CVVideoWidget(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.drawImage(QtCore.QPoint(0, 0), OpenCVQImage(self._frame))
 
-    def keyPressEvent(self, event):
-        # self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
-        keymap = self._camera_device.key_interface()
-        if not event.isAutoRepeat() and event.key() in keymap:
-            msg = keymap[event.key()] + '1'
-            self.key_action.emit(msg)
-        event.accept()
-
-    def keyReleaseEvent(self, event):
-        # self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
-        keymap = self._camera_device.key_interface()
-        if event.key() in keymap:
-            msg = keymap[event.key()] + '0'
-            self.key_action.emit(msg)
-        event.accept()
+    # def keyPressEvent(self, event):
+    #     # self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
+    #     keymap = self._camera_device.key_interface()
+    #     if not event.isAutoRepeat() and event.key() in keymap:
+    #         msg = keymap[event.key()] + '1'
+    #         self.key_action.emit(msg)
+    #     event.accept()
+    #
+    # def keyReleaseEvent(self, event):
+    #     # self.log.debug("key released {}, isAutorepeat {}".format(event.key(), event.isAutoRepeat()))
+    #     keymap = self._camera_device.key_interface()
+    #     if event.key() in keymap:
+    #         msg = keymap[event.key()] + '0'
+    #         self.key_action.emit(msg)
+    #     event.accept()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent):
         self.mouse_press_action_signal.emit(a0.x(), a0.y())

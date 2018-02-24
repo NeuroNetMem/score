@@ -76,8 +76,8 @@ class DeviceManager(QtCore.QObject):
         self.to_release = False
         self._device = None  # the underlying video source device
         self.init_device()
-        if self.analyzer.do_track:
-            self.analyzer.init_tracker(self.frame_size)
+        # if self.analyzer.do_track:
+        #     self.analyzer.init_tracker(self.frame_size)
 
         self.start_time = self.get_absolute_time()
         self._frame_no = 0
@@ -360,7 +360,8 @@ class VideoDeviceManager(DeviceManager):
         if not self._device.isOpened():
             logger.error("Could not open video file {}".format(self.video_in_file_name))
             raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
-
+        else:
+            logger.debug("Successfully opened file {}".format(self.video_in_file_name))
         logger.debug("video has a size of {} and {} fps".format(self.frame_size, self.fps))
         if self.video_control_widget is None:
             control_widget = VideoControlWidget()
@@ -442,7 +443,7 @@ class VideoDeviceManager(DeviceManager):
         ret, frame = self._device.read()
 
         if ret:
-            logger.debug("acquiring frame of shape {}".format(frame.shape))
+            # logger.debug("acquiring frame of shape {}".format(frame.shape))
             self.frame_no = int(self._device.get(cv2.CAP_PROP_POS_FRAMES))
             self.last_frame = frame
             self.frame_pos_signal.emit(self.frame_no)
@@ -459,7 +460,7 @@ class VideoDeviceManager(DeviceManager):
                 self.process_frame(frame)  # should it be called only when recording?
 
                 if self.out:
-                    logger.debug("saving frame of shape {}".format(str(frame.shape)))
+                    # logger.debug("saving frame of shape {}".format(str(frame.shape)))
                     self.out.write(frame)
                 frame_display = cv2.resize(np.copy(frame), (int(w * self.scale), int(h * self.scale)),
                                            interpolation=cv2.INTER_AREA)
@@ -512,11 +513,13 @@ class VideoDeviceManager(DeviceManager):
     @QtCore.pyqtSlot()
     def rewind_action(self):
         new_frame = self.frame_no - 60 * self.fps
+        new_frame = max(new_frame, 0)
         self.skip_to_frame(new_frame)
 
     @QtCore.pyqtSlot()
     def fastforward_action(self):
         new_frame = self.frame_no + 60 * self.fps
+        new_frame = min(new_frame, self.last_frame)
         self.skip_to_frame(new_frame)
 
     @QtCore.pyqtSlot()

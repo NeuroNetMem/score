@@ -85,6 +85,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.tracker_file = None
         self.tracker_columns = None
         self.tracker_log = None
+        self.unscheduled_trial = False
 
         self.comments = ''
 
@@ -111,12 +112,12 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         """test that all the video files are there before a video session """
         import warnings
         if self.video_in_source == "glob":
-            scheduled_trials = pd.unique(self.scheme['run_nr'])
+            scheduled_trials = pd.unique(self.scheme.index)
             for i in scheduled_trials:
                 fn = self.get_video_in_file_name_for_trial(i)
-                if not os.path.exists(fn):
-                    warnings.warn("Video in file {} does not exist".format(fn))
-                    logger.warning("Video in file {} does not exist".format(fn))
+                if fn is None:
+                    warnings.warn("Video for trial {} does not exist".format(i))
+                    logger.warning("Video for trial {} does not exist".format(i))
 
     def read_config(self):
         config_dict = get_config_section("data_manager")
@@ -257,8 +258,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.tracker_log.to_csv(self.tracker_file)
 
         logger.info("finalized trial {}".format(self.cur_actual_run))
+        if not self.unscheduled_trial:
+            self.cur_scheduled_run += 1
+        else:
+            self.unscheduled_trial = False
         self.cur_actual_run += 1
-        self.cur_scheduled_run += 1
 
     def set_trial_number(self, i):
         self.cur_scheduled_run = i
@@ -290,7 +294,10 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             file_list = glob.glob(file_glob)
             file_list.sort()
             logger.debug("used glob {} and got file list {}".format(file_glob, file_list))
-            filename = file_list[-1]  # we are using the most recent available file with that
+            if len(file_list) > 0:
+                filename = file_list[-1]  # we are using the most recent available file with that
+            else:
+                filename = None
             # trial number
         else:
             raise ValueError("Unknown video in mode {}".format(self.video_in_source))
@@ -300,6 +307,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         dirname = os.path.dirname(self.scheme_file)
         basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         scheduled_run_no_str = str(self.cur_scheduled_run).zfill(4)
+        if self.unscheduled_trial:
+            scheduled_run_no_str = '0000'
         actual_run_no_str = str(self.cur_actual_run).zfill(4)
         codes = {'live': 'L', 'video': 'V'}
         mode_code = codes[self.mode]
@@ -353,7 +362,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         pass
 
     def add_trial(self):
-        self.cur_actual_run += 1
+        # self.cur_actual_run += 1
+        self.unscheduled_trial = True
 
     def skip_trial(self):
         self.cur_scheduled_run += 1
