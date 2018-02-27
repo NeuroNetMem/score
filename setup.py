@@ -16,5 +16,5 @@ setup(description='Behavioral scorer',
       name='score_behavior',
       entry_points="""
         [console_scripts]
-        scorer32=score_behavior.score:_main
+        score=score_behavior.score_window:_main
       """, install_requires=['pandas', 'appdirs'])

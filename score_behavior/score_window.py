@@ -366,7 +366,7 @@ def _main():
         logging.error("Uncaught exception: {}".format(str(e)))
 
 
-# sys.excepthook = excepthook
+sys.excepthook = excepthook
 
 if __name__ == '__main__':
     _main()
