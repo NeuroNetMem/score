@@ -88,6 +88,8 @@ class DeviceManager(QtCore.QObject):
         self.track_end_x = 0
         self.track_end_y = 0
 
+        self.analyzer.device = self
+
     def set_analyzer(self, analyzer):
         self.analyzer = analyzer
         # noinspection PyUnresolvedReferences
@@ -559,6 +561,8 @@ class CameraDeviceManager(DeviceManager):
         if not self._device.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
+        if self.analyzer.do_track:
+            self.analyzer.init_tracker(self.frame_size)
         return None
 
     @QtCore.pyqtSlot()

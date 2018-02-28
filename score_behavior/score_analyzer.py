@@ -33,7 +33,7 @@ class FrameAnalyzer(QtCore.QObject):
         self.do_track = False
         self.trial_duration_seconds = 0
         self.read_config()
-        self.device = device
+        self._device = device
         self.csv_out = None
         self.tracker = None
         self.tracker_controller = None
@@ -63,6 +63,16 @@ class FrameAnalyzer(QtCore.QObject):
             self.do_track = bool(d["do_track"])
         if "trial_duration_seconds" in d:
             self.trial_duration_seconds = datetime.timedelta(seconds=d['trial_duration_seconds'])
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, dev):
+        self._device = dev
+        if dev:
+            self.device.state_changed_signal.connect(self.session_controller.change_state)
 
     @property
     def trial_state(self):
@@ -115,12 +125,14 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
                 self.session_controller.comments_inserted_signal.connect(self.set_comments)
                 self.session_controller.skip_trial_signal.connect(self.skip_trial)
-                self.device.state_changed_signal.connect(self.session_controller.change_state)
 
                 self.parent().setFocus()
             except Exception as e:
-                import traceback
+                import traceback, sys
                 logger.error("Could not start session from file {}  Error {}".format(filename, traceback.format_exc()))
+                logger.error("Traceback:")
+                (_, _ , tb) = sys.exc_info()
+                logger.error("".join(traceback.format_tb(tb)))
                 self.error_signal.emit(str(e))
                 return -1
 
@@ -237,11 +249,13 @@ class FrameAnalyzer(QtCore.QObject):
         self.complete_animal_init(end[0], end[1], self.frame_no)
 
     def init_tracker(self, frame_size):
+        logger.debug("initializing tracker")
         if not self.do_track:
             return
         if self.tracker is None:
             self.tracker = Tracker(frame_size)
         if self.tracker_controller is None:
+            logger.debug("initializing tracker controller")
             self.tracker_controller = TrackerController(self.tracker, parent=None)
             self.parent().ui.sidebarWidget.layout().addWidget(self.tracker_controller.widget)
         # if self._analyzer.tracker:

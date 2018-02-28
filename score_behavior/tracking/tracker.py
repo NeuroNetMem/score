@@ -585,6 +585,8 @@ class Tracker:
         self.state = self.State.READY
 
     def add_animal_auto(self):
+        if self.state == self.State.INACTIVE:
+            return
         # TODO now only for one animal
         x = self.centroids[0, 0]
         y = self.centroids[0, 1]
