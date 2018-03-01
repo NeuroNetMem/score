@@ -19,6 +19,6 @@
     "extra_event_columns": [],
     "video_in_source": "glob",
     "video_in_glob": "{prefix}_t{trial:0>4}L*_raw.avi",
-    "object_dir": "/Users/fpbatta/src/batlab/score/score_behavior/resources/objects"
+    "object_dir": "~/src/batlab/score/score_behavior/resources/objects"
   }
 }

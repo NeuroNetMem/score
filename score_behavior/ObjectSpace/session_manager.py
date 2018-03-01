@@ -27,11 +27,12 @@ class ObjectSpaceSessionManager(SessionManager):
         """test that all the object images are there before starting the session"""
         import imghdr
         obj_idxs = list(pd.unique(self.scheme['obj']))
+        self.object_dir = os.path.expanduser(self.object_dir)
         self.object_files = {}
         for obj_idx in obj_idxs:
             fname = os.path.join(self.object_dir, str(obj_idx) + '.JPG')
             if not os.path.exists(fname):
-                raise RuntimeError("Object image file {} does not exist".format(fname))
+                raise RuntimeError("Object image file {} in folder {} does not exist".format(fname, self.object_dir))
             if imghdr.what(fname) != 'jpeg':
                 raise RuntimeError("File {} is not a JPG image".format(fname))
             self.object_files[obj_idx] = fname
