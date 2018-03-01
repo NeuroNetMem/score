@@ -62,5 +62,6 @@ dependencies:
   - prompt-toolkit==1.0.9
   - psutil==5.4.3
   - pandas==0.19.2
+  - neuroseries
 prefix: /home/fpbatta/anaconda3/envs/opencv_pyqt5
 
