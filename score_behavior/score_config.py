@@ -54,7 +54,7 @@ def config_init(fname=None):
     default_loc = os.path.join(appdirs.user_data_dir(appname, appauthor), "score_config.json")
 
     if not os.path.exists(appdirs.user_data_dir(appname, appauthor)):
-        os.mkdir(appdirs.user_data_dir(appname, appauthor))
+        os.makedirs(appdirs.user_data_dir(appname, appauthor))
 
     if not os.path.exists(default_loc):
         f = open(default_loc, "w")
