@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir -p ~/data
+xhost + 
+docker run -it -v /tmp/.X11-unix:/tmp/.X11-unix -v ~/data:/data --device /dev/video0:/dev/video0 -e DISPLAY=$DISPLAY memdynlab/score:latest
