@@ -19,3 +19,5 @@ apt-get update
 
 apt-get install docker-ce
 
+usermod -aG docker $SUDO_USER
+
