@@ -268,7 +268,6 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.cur_scheduled_run = i
 
     def set_comments(self, comments):
-        print("COMMENTS*"+comments+"*")
         if len(comments) > 0:
             self.comments = self.comments + '|' + comments
         else:
