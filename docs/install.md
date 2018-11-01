@@ -20,7 +20,7 @@ software, when they are available.
 We provide here instructions targeted to Ubuntu Linux 16.04 LTS, which will be for the time being the 
 only supported OS. 
 
-####Installing docker 
+#### Installing docker 
 
 Docker is the software that manages and runs the images. 
 This step needs to be run only once. Your computer needs to be connected to the internet for 
@@ -44,7 +44,7 @@ restart your computer for the right permissions to be set. Logging out and back 
 enough, but it is not guaranteed. If you encounter "permission denied" errors when running Score
 (see below), please restart your computer and running again
 
-####Running score
+#### Running score
 
 You need the [run script](https://raw.githubusercontent.com/MemDynLab/score/master/score-docker/docker_run)
 
@@ -66,7 +66,7 @@ After that, all you need to do to run the code is, from a terminal window
 The first time (or when new software is available), you will see that it will download the 
 image from the Docker servers. Therefore you need an internet connection. 
 
-####The Docker environment
+#### The Docker environment
 
 The application is sandbox, so it will only see the `data` folder from your home directory. 
 you should place the csv sheets and e.g. the object images in that folder. That folder is 

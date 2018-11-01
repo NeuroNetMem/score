@@ -4,7 +4,7 @@
   },
   "analyzer": {
     "do_track": 1,
-    "trial_duration_seconds": 300
+    "default_trial_duration_seconds": 300
   },
   "tracker": {
     "max_num_animals": 1,

@@ -16,7 +16,7 @@ class ObjectSpaceSessionManager(SessionManager):
                                                         extra_trial_columns=extra_trial_columns,
                                                         min_free_disk_space=min_free_disk_space,
                                                         mode=mode, r_keys=r_keys)
-        self.extra_trial_columns = ['loc_1', 'loc_2', 'obj']
+        self.extra_trial_columns.extend(['loc_1', 'loc_2', 'obj'])
         self.object_files = {}
         self.test_object_images()
 

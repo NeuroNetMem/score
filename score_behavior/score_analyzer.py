@@ -31,6 +31,7 @@ class FrameAnalyzer(QtCore.QObject):
     def __init__(self, device, parent=None):
         super(FrameAnalyzer, self).__init__(parent)
         self.do_track = False
+        self.default_trial_duration_seconds = 0
         self.trial_duration_seconds = 0
         self.read_config()
         self._device = device
@@ -61,8 +62,9 @@ class FrameAnalyzer(QtCore.QObject):
         d = get_config_section("analyzer")
         if "do_track" in d:
             self.do_track = bool(d["do_track"])
-        if "trial_duration_seconds" in d:
-            self.trial_duration_seconds = datetime.timedelta(seconds=d['trial_duration_seconds'])
+        if "default_trial_duration_seconds" in d:
+            self.default_trial_duration_seconds = datetime.timedelta(seconds=d['default_trial_duration_seconds'])
+            self.trial_duration_seconds = self.default_trial_duration_seconds
 
     @property
     def device(self):
@@ -128,10 +130,11 @@ class FrameAnalyzer(QtCore.QObject):
 
                 self.parent().setFocus()
             except Exception as e:
-                import traceback, sys
+                import traceback
+                import sys
                 logger.error("Could not start session from file {}  Error {}".format(filename, traceback.format_exc()))
                 logger.error("Traceback:")
-                (_, _ , tb) = sys.exc_info()
+                (_, _, tb) = sys.exc_info()
                 logger.error("".join(traceback.format_tb(tb)))
                 self.error_signal.emit(str(e))
                 return -1
@@ -155,6 +158,10 @@ class FrameAnalyzer(QtCore.QObject):
         scheme = self.session.get_scheme_trial_info()
 
         logger.debug("starting setting up trial")
+        self.trial_duration_seconds = self.default_trial_duration_seconds
+        if 'trial_duration' in scheme:
+            self.trial_duration_seconds = datetime.timedelta(seconds=int(scheme['trial_duration']))
+
         self.dialog.set_scheme(scheme)
         self.start_trial_dialog()
 

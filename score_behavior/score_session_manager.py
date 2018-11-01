@@ -138,6 +138,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
+        # TODO this should be in ObjectSpaCE!!! at least partly
         self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time',
                                     'loc_1_time_5', 'loc_2_time_5',
                                     'total', 'sequence_nr', 'comments',  'goal', 'video_out_filename',
