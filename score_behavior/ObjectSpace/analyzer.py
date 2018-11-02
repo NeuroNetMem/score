@@ -1,7 +1,6 @@
 import cv2
 
 from PyQt5 import QtCore
-
 from score_behavior.score_analyzer import FrameAnalyzer
 from score_behavior.global_defs import DeviceState
 import logging
@@ -22,6 +21,8 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                   'LL': (lambda w, h: ((8, h - 8), (int(w * 0.3), int(h * 0.7)))),
                   'LR': (lambda w, h: ((w - 8, h - 8), (int(w * 0.7), int(h * 0.7))))}
     dialog_trigger_signal = QtCore.pyqtSignal(name="ObjectSpaceFrameAnalyzer.dialog_trigger_signal")
+    post_trial_dialog_trigger_signal = \
+        QtCore.pyqtSignal(str, str, name="ObjectSpaceFrameAnalyzer.post_trial_dialog_trigger_signal")
 
     def __init__(self, device, parent=None):
         super(ObjectSpaceFrameAnalyzer, self).__init__(device, parent=parent)
@@ -82,3 +83,11 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         if self.obj_state['TR']:
             cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
 
+    def finalize_trial(self):
+        scheme = self.session.get_scheme_trial_info()
+        if "posttrial_instructions" in scheme and isinstance(scheme["posttrial_instructions"], str):
+            text = scheme['posttrial_instructions']
+            text = text.replace("|", "<br/>")
+            text = "Post Trial Instructions:<br/>" + text
+            self.post_trial_dialog_trigger_signal.emit("Post Trial Instructions", text)
+        super(ObjectSpaceFrameAnalyzer, self).finalize_trial()

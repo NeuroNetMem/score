@@ -148,6 +148,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rotateComboBox.setEnabled(False)
             self.ui.mirroredButton.setEnabled(False)
 
+    @QtCore.pyqtSlot(str, str)
+    def info_dialog(self, title, text):
+        QtWidgets.QMessageBox.information(self, title, text)
+
     @QtCore.pyqtSlot(str)
     def error_and_close(self, e):
         self.log.error('Closing due to: {}'.format(e))
@@ -241,8 +245,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if self.device:
             self.device.cleanup()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
+
         self._analyzer.set_session(self.session_file, mode='live')
         self._analyzer.error_signal.connect(self.error_and_close)
+        self._analyzer.post_trial_dialog_trigger_signal.connect(self.info_dialog)
         self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer, parent_window=self)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.actionSave_to.setEnabled(True)
