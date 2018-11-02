@@ -2,7 +2,7 @@ import logging
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from score_behavior.trial_dialog_ui import Ui_TrialDialog
+from score_behavior.ObjectSpace.trial_dialog_ui import Ui_TrialDialog
 
 
 class TrialDialog(QtWidgets.QDialog):
@@ -92,6 +92,23 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.objectComboBox.setCurrentIndex(self.obj_idxs.index(values['obj']))
         px = self.make_location_map(values)
         self.ui.objLocLabel.setPixmap(px)
+        if 'pretrial_instructions' in values and isinstance(values['pretrial_instructions'], str):
+            self.ui.pretrial_instruction_title_label.setText("Before trial:")
+            text = values['pretrial_instructions']
+            text = text.replace("|", "<br/>")
+            self.ui.pretrial_instruction_text_label.setText(text)
+        else:
+            self.ui.pretrial_instruction_title_label.setText("")
+            self.ui.pretrial_instruction_text_label.setText("")
+
+        if 'posttrial_instructions' in values and isinstance(values['posttrial_instructions'], str):
+            self.ui.posttrial_instruction_title_label.setText("After trial:")
+            text = values['posttrial_instructions']
+            text = text.replace("|", "<br/>")
+            self.ui.posttrial_instruction_text_label.setText(text)
+        else:
+            self.ui.posttrial_instruction_title_label.setText("")
+            self.ui.posttrial_instruction_text_label.setText("")
 
     @QtCore.pyqtSlot(int)
     def change_location(self, _):

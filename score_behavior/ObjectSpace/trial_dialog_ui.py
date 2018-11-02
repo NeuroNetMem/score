@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'trial_dialog_ui.ui'
+# Form implementation generated from reading ui file 'ObjectSpace/trial_dialog_ui.ui'
 #
 # Created by: PyQt5 UI code generator 5.6
 #
@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_TrialDialog(object):
     def setupUi(self, TrialDialog):
         TrialDialog.setObjectName("TrialDialog")
-        TrialDialog.resize(538, 338)
+        TrialDialog.resize(538, 414)
         self.verticalLayout = QtWidgets.QVBoxLayout(TrialDialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
@@ -81,9 +81,37 @@ class Ui_TrialDialog(object):
         self.objLocLabel.setObjectName("objLocLabel")
         self.horizontalLayout_2.addWidget(self.objLocLabel)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
-        self.widget = QtWidgets.QWidget(TrialDialog)
-        self.widget.setObjectName("widget")
-        self.verticalLayout.addWidget(self.widget)
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.pretrial_instruction_title_label = QtWidgets.QLabel(TrialDialog)
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        font.setWeight(75)
+        self.pretrial_instruction_title_label.setFont(font)
+        self.pretrial_instruction_title_label.setObjectName("pretrial_instruction_title_label")
+        self.verticalLayout_2.addWidget(self.pretrial_instruction_title_label)
+        self.pretrial_instruction_text_label = QtWidgets.QLabel(TrialDialog)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        self.pretrial_instruction_text_label.setFont(font)
+        self.pretrial_instruction_text_label.setObjectName("pretrial_instruction_text_label")
+        self.verticalLayout_2.addWidget(self.pretrial_instruction_text_label)
+        self.posttrial_instruction_title_label = QtWidgets.QLabel(TrialDialog)
+        font = QtGui.QFont()
+        font.setPointSize(16)
+        font.setBold(True)
+        font.setWeight(75)
+        self.posttrial_instruction_title_label.setFont(font)
+        self.posttrial_instruction_title_label.setObjectName("posttrial_instruction_title_label")
+        self.verticalLayout_2.addWidget(self.posttrial_instruction_title_label)
+        self.posttrial_instruction_text_label = QtWidgets.QLabel(TrialDialog)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        self.posttrial_instruction_text_label.setFont(font)
+        self.posttrial_instruction_text_label.setObjectName("posttrial_instruction_text_label")
+        self.verticalLayout_2.addWidget(self.posttrial_instruction_text_label)
+        self.verticalLayout.addLayout(self.verticalLayout_2)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -117,6 +145,10 @@ class Ui_TrialDialog(object):
         self.label_6.setText(_translate("TrialDialog", "Location 2"))
         self.label_7.setText(_translate("TrialDialog", "Object"))
         self.label_8.setText(_translate("TrialDialog", "Trial"))
+        self.pretrial_instruction_title_label.setText(_translate("TrialDialog", "Pre Trial:"))
+        self.pretrial_instruction_text_label.setText(_translate("TrialDialog", "instructions"))
+        self.posttrial_instruction_title_label.setText(_translate("TrialDialog", "Post Trial:"))
+        self.posttrial_instruction_text_label.setText(_translate("TrialDialog", "Instructions"))
         self.addTrialButton.setText(_translate("TrialDialog", "Add Trial"))
         self.skipTrialButton.setText(_translate("TrialDialog", "Skip Trial"))
 

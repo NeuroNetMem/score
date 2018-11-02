@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>538</width>
-    <height>338</height>
+    <height>414</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -145,7 +145,60 @@
     </layout>
    </item>
    <item>
-    <widget class="QWidget" name="widget" native="true"/>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QLabel" name="pretrial_instruction_title_label">
+       <property name="font">
+        <font>
+         <pointsize>16</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Pre Trial:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="pretrial_instruction_text_label">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>instructions</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="posttrial_instruction_title_label">
+       <property name="font">
+        <font>
+         <pointsize>16</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Post Trial:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="posttrial_instruction_text_label">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Instructions</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
