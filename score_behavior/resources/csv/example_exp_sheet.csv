@@ -1,0 +1,6 @@
+condition,goal,group,session,box,subject,trial,day,loc_1,loc_2,obj,trial_duration,pretrial_instructions,posttrial_instructions,loc_1_time,loc_2_time,total,start_time,comments,run_nr,originalnr
+od,LL,2,1,0,13,1,Mon,LL,UL,15,120,coco,wine,,,,,,1,
+con,,2,1,0,14,1,Mon,UL,LL,15,180,banana|strawberries,sherry,,,,,,2,
+con,,2,1,1,15,1,Mon,LL,UL,15,300,,whisky,,,,,,3,
+or,UL,2,1,0,16,1,Mon,UL,LL,15,60,grapes,,,,,,,4,
+con,,2,1,0,17,1,Mon,UL,LL,15,0,,grappa,,,,,,5,
