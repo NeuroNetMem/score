@@ -38,8 +38,8 @@ class DeviceManager(QtCore.QObject):
     yes_no_answer_signal = QtCore.pyqtSignal(bool, name='CameraDevice.yes_no_answer_signal')
     time_remaining_signal = QtCore.pyqtSignal(str, name='CameraDevice.time_remaining_signal')
 
-    scales_possible = ['0.5', '0.8', '1', '1.5', '2']
-    scale_init = 2
+    scales_possible = ['0.5', '0.6', '0.8', '1', '1.2', '1.5', '2']
+    scale_init = 3
     rotate_options = [0, 90, 180, 270]
     rotate_functions = {0: (lambda img: img),
                         90: (lambda img: cv2.flip(cv2.transpose(img), 1)),
@@ -139,6 +139,11 @@ class DeviceManager(QtCore.QObject):
     def init_device(self):
         return None  # "pure virtual" function
 
+    def change_scale_from_value(self, s):
+        self.scale = float(s)
+        logger.debug("Scale changed to {}".format(self.scale))
+        self.size_changed_signal.emit()
+
     @QtCore.pyqtSlot(int)
     def change_scale(self, i):
         self.scale = float(self.scales_possible[i])
@@ -191,6 +196,11 @@ class DeviceManager(QtCore.QObject):
     def set_mirror(self, mirrored):
         logging.debug("setting mirrored to {}".format(mirrored))
         self.mirrored = mirrored
+
+    def set_rotate_from_value(self, a):
+        self.rotate_angle = a
+        logger.debug("Setting rotate to {}".format(self.rotate_angle))
+        self.size_changed_signal.emit()
 
     @QtCore.pyqtSlot(int)
     def set_rotate(self, i):

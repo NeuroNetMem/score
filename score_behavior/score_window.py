@@ -66,12 +66,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             # noinspection PyUnresolvedReferences
             self.ui.cameraWidget.key_action.connect(self._analyzer.obj_state_change)
             self.ui.mirroredButton.setEnabled(True)
+            self.ui.mirroredButton.setTristate(False)
             self.ui.mirroredButton.toggled.connect(self.device.set_mirror)
             self.ui.rotateComboBox.setEnabled(True)
             self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
             self.ui.playButton.clicked.connect(self.device.start_trial_acquisition)
             self.ui.pauseButton.clicked.connect(self.device.stop_trial_acquisition)
-            self.ui.actionStop_Acquisition.triggered.connect(self.device.stop_acquisition)
+            self.ui.actionStop_Acquisition.triggered.connect(self.device.stop_acqutisition)
             self.ui.rawVideoCheckBox.toggled.connect(self.device.set_raw_out)
             self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
@@ -235,6 +236,21 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         else:
             cam_id = self.get_camera_id_to_open()
         self.set_camera(cam_id)
+        if "display_scale" in d:
+            v = str(d["display_scale"])
+            if v not in self.device.scales_possible:
+                raise ValueError("Scale value " + str(v) + " not allowed")
+            self.ui.scaleComboBox.setCurrentIndex(self.device.scales_possible.index(v))
+        if "video_rotate" in d:
+            v = str(d["video_rotate"])
+            rs = [str(i) for i in self.device.rotate_options]
+            if  v not in rs:
+                raise ValueError("Rotate value " + str(v) + " not allowed")
+            self.ui.rotateComboBox.setCurrentIndex(rs.index(v))
+        if "video_mirror" in d:
+            self.ui.mirroredButton.setCheckState(d["video_mirror"])
+            # self.device.set_mirror = d["video_mirror"]
+
     # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):
 
