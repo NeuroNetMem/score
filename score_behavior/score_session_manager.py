@@ -168,7 +168,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         import shutil
 
         self.event_log_file = self.get_log_file_name()
-        self.event_log_columns = ['wall_time', 'trial_time', 'frame', 'sequence_nr', 'type', 'start_stop']
+        self.event_log_columns = ['wall_time', 'trial_time', 'frame', 'sequence_nr', 'run_nr', 'type', 'start_stop']
         self.event_log_columns.extend(self.extra_event_columns)
         logger.info("Attempting to open session log file {}".format(self.event_log_file))
         if os.path.exists(self.event_log_file):
@@ -327,8 +327,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         import time
         start_stop = bool(int(msg[-1]))
         msg = msg[:-1]
-        row = [ts, frame_no, self.cur_actual_run, msg, start_stop]
+        row = [ts, frame_no, self.cur_actual_run, self.cur_scheduled_run, msg, start_stop]
         row.extend(extra_data)
+        logger.debug("event row is " + str(row))
         self.event_log.loc[time.time()] = row
 
     def set_position_data(self, position_data):

@@ -1,6 +1,5 @@
 import json
 import os
-import os.path
 import appdirs
 import logging
 
