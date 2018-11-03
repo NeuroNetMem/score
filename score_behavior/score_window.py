@@ -72,7 +72,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rotateComboBox.currentIndexChanged.connect(self.device.set_rotate)
             self.ui.playButton.clicked.connect(self.device.start_trial_acquisition)
             self.ui.pauseButton.clicked.connect(self.device.stop_trial_acquisition)
-            self.ui.actionStop_Acquisition.triggered.connect(self.device.stop_acqutisition)
+            self.ui.actionStop_Acquisition.triggered.connect(self.device.stop_acquisition)
             self.ui.rawVideoCheckBox.toggled.connect(self.device.set_raw_out)
             self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
@@ -221,7 +221,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         session_file = dialog_out[0]
         self.open_live_session(session_file)
 
-    def open_live_session(self, session_file):
+    def open_live_session(self, session_file, first_trial=0):
         if session_file:
             self.session_file = session_file
             self.log.info('Session file opened: {}'.format(self.session_file))
@@ -235,7 +235,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             cam_id = d["camera_id"]
         else:
             cam_id = self.get_camera_id_to_open()
-        self.set_camera(cam_id)
+        self.set_camera(cam_id, first_trial)
+
+        # setting video parameters from config file
         if "display_scale" in d:
             v = str(d["display_scale"])
             if v not in self.device.scales_possible:
@@ -244,7 +246,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         if "video_rotate" in d:
             v = str(d["video_rotate"])
             rs = [str(i) for i in self.device.rotate_options]
-            if  v not in rs:
+            if v not in rs:
                 raise ValueError("Rotate value " + str(v) + " not allowed")
             self.ui.rotateComboBox.setCurrentIndex(rs.index(v))
         if "video_mirror" in d:
@@ -264,13 +266,13 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.session_file = dialog_out[0]
         self.set_video_in()
 
-    def set_camera(self, camera_id):
+    def set_camera(self, camera_id, first_trial=0):
         self.log.debug('Set camera to {}'.format(camera_id))
         if self.device:
             self.device.cleanup()
         self._analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
 
-        self._analyzer.set_session(self.session_file, mode='live')
+        self._analyzer.set_session(self.session_file, mode='live', first_trial=first_trial)
         self._analyzer.error_signal.connect(self.error_and_close)
         self._analyzer.post_trial_dialog_trigger_signal.connect(self.info_dialog)
         self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer, parent_window=self)
@@ -354,9 +356,13 @@ def _main():
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Starting Score with git version {}'.format(GIT_VERSION))
 
-    parser = argparse.ArgumentParser(description='Experiment control and tracking for behavior.', prog='Score')
+    parser = argparse.ArgumentParser(description='Experiment control and tracking for behavior.', prog='score')
     parser.add_argument('--debug', help="Run in debug mode", action='store_true')
     parser.add_argument('--config', nargs=1, help="Read a default config file")
+    parser.add_argument('--version', action='version', version='%(prog)s ' + GIT_VERSION)
+    parser.add_argument('--live', nargs=1, help="open a live file with sheet file ")
+    parser.add_argument('--video', nargs=1, help="open a video file with sheet file ")
+    parser.add_argument('--firsttrial', nargs=1, help="specify the first trial in the sheet to be run")
     args = parser.parse_args()
     fname = None
     if args.config:
@@ -371,6 +377,17 @@ def _main():
     else:
         level = logging.INFO
 
+    live_session = None
+    if args.live:
+        live_session = args.live[0]
+
+    video_session = None
+    if args.video:
+        video_session = args.video[0]
+
+    first_trial = 0
+    if args.firsttrial:
+        first_trial = int(args.firsttrial[0])
     logging.getLogger().setLevel(level)
     logging.info("Configuration information: {}".format(str(config_dict)))
 
@@ -387,6 +404,11 @@ def _main():
         app.quitOnLastWindowClosed = True
         # noinspection PyUnresolvedReferences
         app.lastWindowClosed.connect(window.close_all)
+        if live_session:
+            window.open_live_session(live_session, first_trial)
+        if video_session:
+            window.session_file = video_session
+            window.set_video_in()
         logging.info("Starting app")
         app.exec_()
         logging.info('All done.')

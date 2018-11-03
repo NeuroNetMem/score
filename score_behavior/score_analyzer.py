@@ -107,16 +107,19 @@ class FrameAnalyzer(QtCore.QObject):
     def key_interface(self):
         return self.dir_keys
 
-    def set_session(self, filename, mode='live'):
+    def set_session(self, filename, mode='live', first_trial=0):
         self.mode = mode
         try:
-            # noinspection PyUnresolvedReferences,PyCallByClass,PyTypeChecker
-            init_trial, ok = QtWidgets.QInputDialog.getInt(None,
-                                                           "Initial trial",
-                                                           "Please enter the first scheme trial for this session",
-                                                           1, min=1, flags=QtCore.Qt.WindowFlags())
-            if not ok:
-                init_trial = 1
+            if first_trial > 0:
+                init_trial = first_trial
+            else:
+                # noinspection PyUnresolvedReferences,PyCallByClass,PyTypeChecker
+                init_trial, ok = QtWidgets.QInputDialog.getInt(None,
+                                                               "Initial trial",
+                                                               "Please enter the first scheme trial for this session",
+                                                               1, min=1, flags=QtCore.Qt.WindowFlags())
+                if not ok:
+                    init_trial = 1
             logger.debug("Attempting to start {} session from file {} and from trial {}".format(self.mode, filename,
                                                                                                 init_trial))
             try:
