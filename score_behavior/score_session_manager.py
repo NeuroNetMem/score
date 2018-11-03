@@ -2,10 +2,9 @@ import numpy as np
 import pandas as pd
 from pandas.core.common import PandasError
 
-
+import os
 import datetime
 import logging
-import os
 import glob
 
 from score_behavior.score_config import get_config_section
@@ -40,11 +39,9 @@ class SessionManager:
         free_disk_space = 400
         logger.info("Creating session manager from file {} starting from trial {}".format(filename, initial_trial))
         if platform.system() == 'Darwin' or platform.system() == 'Linux':
-            import os
             st = os.statvfs(filename)
             free_disk_space = int(st.f_frsize * st.f_bfree / 1.e9)
         elif platform.system() == 'Windows':
-            import os
             import ctypes
             dirname = os.path.dirname(os.path.abspath(filename))
             free_bytes = ctypes.c_ulonglong(0)
@@ -61,6 +58,11 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
         self.mode = mode
         self.scheme_file = filename
+        if self.scheme_file[-10:] != "_sheet.csv":
+            raise ValueError("scheme filename should have the end in '_sheet.csv'. ")
+        self.dirname = os.path.dirname(self.scheme_file)
+        self.basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
+        self.basename = self.basename[:-6]
         self.file_name_prefix_for_trial = ''
         self.cur_actual_run = 1
         try:
@@ -162,9 +164,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_result_file_name(self):
         import os
-        dirname = os.path.dirname(self.scheme_file)
-        basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
-        filename = os.path.join(dirname, basename + '_results.csv')
+        filename = os.path.join(self.dirname, self.basename + '_results.csv')
         return filename
 
     def open_log_file(self):
@@ -204,16 +204,12 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_log_file_name(self):
         import os
-        dirname = os.path.dirname(self.scheme_file)
-        basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
-        filename = os.path.join(dirname, basename + '_log.csv')
+        filename = os.path.join(self.dirname, self.basename + '_log.csv')
         return filename
 
     def get_tracker_file_name(self):
         import os
-        dirname = os.path.dirname(self.scheme_file)
-        basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
-        filename = os.path.join(dirname, basename + '_track.csv')
+        filename = os.path.join(self.dirname, self.basename + '_track.csv')
         return filename
 
     def get_scheme_trial_info(self):
@@ -302,8 +298,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_video_in_file_name_for_trial(self, trial_no=None):
         if self.video_in_source == "glob":
-            dirname = os.path.dirname(self.scheme_file)
-            basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
+            dirname = self.dirname
+            basename = self.basename
             if trial_no is None:
                 trial_no = self.cur_scheduled_run
             file_glob = self.video_in_glob.format(prefix=basename, trial=trial_no)
@@ -320,9 +316,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             raise ValueError("Unknown video in mode {}".format(self.video_in_source))
         return filename
 
-    def get_file_name_prefix_for_trial(self):
-        dirname = os.path.dirname(self.scheme_file)
-        basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
+    def set_file_name_prefix_for_trial(self):
+        dirname = self.dirname
+        basename = self.basename
         scheduled_run_no_str = str(self.cur_scheduled_run).zfill(4)
         if self.unscheduled_trial:
             scheduled_run_no_str = '0000'
@@ -335,7 +331,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.file_name_prefix_for_trial = filename
 
     def get_video_out_file_name_for_trial(self):
-        self.get_file_name_prefix_for_trial()
+        self.set_file_name_prefix_for_trial()
         prefix = self.file_name_prefix_for_trial
         filename = prefix + '.avi'
         filename_raw = self.make_raw_filename(filename)

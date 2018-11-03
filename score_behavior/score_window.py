@@ -217,7 +217,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.log.debug('Asking for session file location to open...')
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Live Session File",
-                                                           os.getcwd(), "CSV (*.csv)")
+                                                           os.getcwd(), "CSV (*_sheet.csv)")
         session_file = dialog_out[0]
         self.open_live_session(session_file)
 
@@ -259,7 +259,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.log.debug("Setting video session ")
 
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
-                                                           os.getcwd(), "CSV (*.csv)")
+                                                           os.getcwd(), "CSV (*_sheet.csv)")
         # video_in_filename = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video Session File",
         #                                                           os.getcwd(), "Videos (*.mp4 *.avi)")
         # video_in_filename = video_in_filename[0]
