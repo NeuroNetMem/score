@@ -2,6 +2,13 @@
   "general": {
     "debug": 1
   },
+  "video": {
+    "camera_type": "opencv",
+    "camera_id": 0,
+    "display_scale": 0.8,
+    "video_rotate": 0,
+    "video_mirror": false
+  },
   "analyzer": {
     "do_track": 1,
     "default_trial_duration_seconds": 300

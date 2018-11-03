@@ -13,7 +13,7 @@ from score_behavior import GIT_VERSION
 from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
-from score_behavior.global_defs import DeviceState
+from score_behavior.global_defs import DeviceState, supported_camera_types
 from score_behavior.score_config import config_init, get_config_section, config_dict
 
 
@@ -39,7 +39,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._device = None
         self._analyzer = None
         self.ui.actionQuit.triggered.connect(self.close_all)
-        self.ui.actionOpen_Camera.triggered.connect(self.get_camera_id_to_open)
         self.ui.actionOpen_Live_Session.triggered.connect(self.get_live_session_file_to_open)
         self.ui.actionOpen_Video_Session.triggered.connect(self.get_video_session_file_to_open)
         self.ui.actionStop_Acquisition.setEnabled(False)
@@ -178,7 +177,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self._analyzer.close()
         QtCore.QCoreApplication.quit()
 
-    @QtCore.pyqtSlot()
     def get_camera_id_to_open(self):
         # n_cameras = find_how_many_cameras()
         n_cameras = 5
@@ -197,7 +195,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
                 return
             cam = int(dialog_out[0])
         self.log.debug('Chose camera {}'.format(cam))
-        self.set_camera(cam)
+        return cam
 
     # noinspection PyArgumentList
     @QtCore.pyqtSlot()
@@ -220,13 +218,23 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Live Session File",
                                                            os.getcwd(), "CSV (*.csv)")
         session_file = dialog_out[0]
+        self.open_live_session(session_file)
+
+    def open_live_session(self, session_file):
         if session_file:
             self.session_file = session_file
             self.log.info('Session file opened: {}'.format(self.session_file))
         else:
             self.log.info('No session file given. Doing nothing.')
-        self.get_camera_id_to_open()
+        d = get_config_section("video")
+        if "camera_type" in d and d["camera_type"] not in supported_camera_types:
+            raise TypeError("unsupported camera type: ", d["camera_type"])
 
+        if "camera_id" in d:
+            cam_id = d["camera_id"]
+        else:
+            cam_id = self.get_camera_id_to_open()
+        self.set_camera(cam_id)
     # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):
 
@@ -251,7 +259,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer.post_trial_dialog_trigger_signal.connect(self.info_dialog)
         self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer, parent_window=self)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
-        self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.addItems(self.device.scales_possible)
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
@@ -275,7 +282,6 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.ui.scaleComboBox.setCurrentIndex(self.device.scale_init)
         self.ui.scaleComboBox.setEnabled(True)
         self.ui.scaleComboBox.currentIndexChanged.connect(self.device.change_scale)
-        self.ui.actionSave_to.setEnabled(True)
         self.ui.scaleComboBox.setEnabled(False)
         self.device.video_finished_signal.connect(self.video_finished)
 

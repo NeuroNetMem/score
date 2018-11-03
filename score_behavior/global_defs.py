@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class DeviceState(Enum):
     NOT_READY = 1
     READY = 2
@@ -7,3 +8,6 @@ class DeviceState(Enum):
     ACQUIRING = 4
     RECORDING = 5
     FINISHED = 6
+
+
+supported_camera_types = ("opencv",)
