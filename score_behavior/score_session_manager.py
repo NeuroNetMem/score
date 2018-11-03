@@ -5,7 +5,7 @@ from pandas.core.common import PandasError
 
 import datetime
 import logging
-import os.path
+import os
 import glob
 
 from score_behavior.score_config import get_config_section
@@ -31,6 +31,8 @@ class SessionManager:
         self.extra_event_columns = []
         self.extra_trial_columns = []
         self.object_dir = None
+        self.log_file_per_trial = False
+
         self.read_config()
 
         # Determine if there is enough space to continue
@@ -59,7 +61,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
         self.mode = mode
         self.scheme_file = filename
-
+        self.file_name_prefix_for_trial = ''
         self.cur_actual_run = 1
         try:
             self.scheme = pd.DataFrame.from_csv(self.scheme_file, index_col='run_nr')
@@ -131,6 +133,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.video_in_glob = config_dict["video_in_glob"]
         if "object_dir" in config_dict:
             self.object_dir = config_dict["object_dir"]
+        if "log_file_per_trial" in config_dict:
+            self.log_file_per_trial = config_dict["log_file_per_trial"]
 
     def open_result_file(self):
         import os
@@ -247,6 +251,13 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.trials_results.loc[info['sequence_nr']] = r
         self.trials_results.update(df_update)
 
+    def write_per_trial_log_file(self):
+        prefix = self.file_name_prefix_for_trial
+        filename = prefix + "_log.csv"
+        events = self.get_events_for_trial()
+        events.to_csv(filename)
+        logger.debug("saved log for trial in file " + filename)
+
     def set_trial_finished(self, video_out_filename, video_out_raw_filename):
         if self.comments:
             self.trials_results.loc[(self.cur_actual_run, 'comments')] = self.comments
@@ -257,6 +268,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.event_log.to_csv(self.event_log_file)
         if self.tracker_log is not None:
             self.tracker_log.to_csv(self.tracker_file)
+        if self.log_file_per_trial:
+            self.write_per_trial_log_file()
 
         logger.info("finalized trial {}".format(self.cur_actual_run))
         if not self.unscheduled_trial:
@@ -307,7 +320,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             raise ValueError("Unknown video in mode {}".format(self.video_in_source))
         return filename
 
-    def get_video_out_file_name_for_trial(self):
+    def get_file_name_prefix_for_trial(self):
         dirname = os.path.dirname(self.scheme_file)
         basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         scheduled_run_no_str = str(self.cur_scheduled_run).zfill(4)
@@ -318,7 +331,13 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         mode_code = codes[self.mode]
         date_string = self.make_datetime_string(datetime.datetime.now())
         filename = os.path.join(dirname, basename + '_t' + scheduled_run_no_str + '_r' + actual_run_no_str +
-                                mode_code + date_string + '.avi')
+                                mode_code + date_string)
+        self.file_name_prefix_for_trial = filename
+
+    def get_video_out_file_name_for_trial(self):
+        self.get_file_name_prefix_for_trial()
+        prefix = self.file_name_prefix_for_trial
+        filename = prefix + '.avi'
         filename_raw = self.make_raw_filename(filename)
         logger.info("Saving video to file {}".format(filename))
         return filename, filename_raw
