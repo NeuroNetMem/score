@@ -81,7 +81,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                 pt1, pt2 = self.rect_coord[place](w, h)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
         if self.obj_state['TR']:
-            cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 0), 8)
+            cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 255), 8)
 
     def finalize_trial(self):
         scheme = self.session.get_scheme_trial_info()
