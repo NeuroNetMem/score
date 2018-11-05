@@ -209,7 +209,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_tracker_file_name(self):
         import os
-        filename = os.path.join(self.dirname, self.basename + '_track.csv')
+        filename = os.path.join(self.dirname, self.basename + '.track.csv')
         return filename
 
     def get_scheme_trial_info(self):
