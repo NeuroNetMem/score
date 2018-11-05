@@ -302,9 +302,9 @@ class FrameAnalyzer(QtCore.QObject):
             self.csv_out.close()
 
     def can_track(self):
-        return self.tracker is not Nones
+        return self.tracker is not None
 
-    def start_animal_init(self, x, y): # TODO move to tracker
+    def start_animal_init(self, x, y):  # TODO move to tracker
         self.animal_start_x = x
         self.animal_start_y = y
 

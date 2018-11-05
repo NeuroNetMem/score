@@ -13,6 +13,7 @@ from score_behavior import GIT_VERSION
 from score_behavior.score_controller import VideoDeviceManager, CameraDeviceManager
 from score_behavior.score_window_ui import Ui_MainWindow
 from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
+from score_behavior.score_analyzer import FrameAnalyzer
 from score_behavior.global_defs import DeviceState, supported_camera_types
 from score_behavior.score_config import config_init, get_config_section, config_dict
 
@@ -114,6 +115,21 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         (w, h) = self.device.display_frame_size
         self.log.debug('Video size changed to {}, {}'.format(w, h))
         self.updateGeometry()
+
+    @QtCore.pyqtSlot(FrameAnalyzer.TrialState)
+    def update_trial_state(self, state):
+        if state == FrameAnalyzer.TrialState.IDLE:
+            self.ui.trial_status_label.setText("IDLE")
+            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+        elif state == FrameAnalyzer.TrialState.READY:
+            self.ui.trial_status_label.setText("READY")
+            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+        elif state == FrameAnalyzer.TrialState.ONGOING:
+            self.ui.trial_status_label.setText("ONGOING")
+            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : red; color : black; }")
+        elif state == FrameAnalyzer.TrialState.COMPLETED:
+            self.ui.trial_status_label.setText("COMPLETED")
+            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
 
     @QtCore.pyqtSlot()
     def video_finished(self):
@@ -277,6 +293,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self._analyzer.set_session(self.session_file, mode='live', first_trial=first_trial)
         self._analyzer.error_signal.connect(self.error_and_close)
         self._analyzer.post_trial_dialog_trigger_signal.connect(self.info_dialog)
+        self._analyzer.trial_state_changed_signal.connect(self.update_trial_state)
         self.device = CameraDeviceManager(camera_id=camera_id, analyzer=self._analyzer, parent_window=self)
         self.ui.sourceLabel.setText("Camera: " + str(camera_id))
         self.ui.scaleComboBox.addItems(self.device.scales_possible)

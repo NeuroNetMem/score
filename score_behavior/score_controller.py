@@ -290,18 +290,18 @@ class DeviceManager(QtCore.QObject):
         w, h = self.frame_size_out
         font = cv2.FONT_HERSHEY_DUPLEX
         datestring = datetime.datetime.now().isoformat()
-        tpt = 5, h - 5
+        tpt = 35, h - 5
         cv2.putText(frame, datestring, tpt, font, 0.5, (255, 255, 255), 1)
         if self.state == State.ACQUIRING and self.display_time:
             cur_time = str(self.get_cur_time())[:-4]
             font = cv2.FONT_HERSHEY_DUPLEX
             # noinspection PyUnusedLocal
             # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
-            tpt = 300, h - 5
+            tpt = 330, h - 5
             cv2.putText(frame, cur_time, tpt, font, 0.5, (255, 255, 255), 1)
             cur_frame = str(self.frame_no)
             # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
-            tpt = 500, h - 5
+            tpt = 530, h - 5
             cv2.putText(frame, cur_frame, tpt, font, 0.5, (255, 255, 255), 1)
 
     def get_cur_time(self):

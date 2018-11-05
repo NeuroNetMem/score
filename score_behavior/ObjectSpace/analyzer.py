@@ -16,10 +16,6 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                 QtCore.Qt.Key_L: 'LR', QtCore.Qt.Key_3: 'LR',
                 QtCore.Qt.Key_T: 'TR'}
 
-    rect_coord = {'UL': (lambda w, h: ((8, 8), (int(w * 0.3), int(h * 0.3)))),
-                  'UR': (lambda w, h: ((w - 8, 8), (int(w * 0.7), int(h * 0.3)))),
-                  'LL': (lambda w, h: ((8, h - 8), (int(w * 0.3), int(h * 0.7)))),
-                  'LR': (lambda w, h: ((w - 8, h - 8), (int(w * 0.7), int(h * 0.7))))}
     dialog_trigger_signal = QtCore.pyqtSignal(name="ObjectSpaceFrameAnalyzer.dialog_trigger_signal")
     post_trial_dialog_trigger_signal = \
         QtCore.pyqtSignal(str, str, name="ObjectSpaceFrameAnalyzer.post_trial_dialog_trigger_signal")
@@ -27,7 +23,12 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
     def __init__(self, device, parent=None):
         super(ObjectSpaceFrameAnalyzer, self).__init__(device, parent=parent)
         self.obj_state = {}
+        self.rect_coord = {'UL': lambda w, h: (None, None),
+                           'UR': lambda w, h: (None, None),
+                           'LL': lambda w, h: (None, None),
+                           'LR': lambda w, h: (None, None)}
         self.device = device
+
         self.init_obj_state()
 
         self.dialog = None
@@ -40,6 +41,22 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         # noinspection PyUnresolvedReferences
         self.dialog_trigger_signal.connect(self.dialog.start_dialog)
         return ret
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, dev):
+        self._device = dev
+        if dev:
+            self.device.state_changed_signal.connect(self.session_controller.change_state)
+            th = self.device.top_info_band_height-2
+            bh = self.device.bottom_info_band_height-2
+            self.rect_coord = {'UL': (lambda w, h: ((0, 0), (th, th))),
+                               'UR': (lambda w, h: ((w - th, 0), (w, th))),
+                               'LL': (lambda w, h: ((0, h - bh), (bh, h))),
+                               'LR': (lambda w, h: ((w - bh, h - bh), (w, h)))}
 
     def start_trial_dialog(self):
         self.dialog_trigger_signal.emit()
@@ -79,9 +96,13 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
         for place, state in self.obj_state.items():
             if place in self.rect_coord and state:
                 pt1, pt2 = self.rect_coord[place](w, h)
-                cv2.rectangle(frame, pt1, pt2, (0, 0, 255), 2)
+                cv2.rectangle(frame, pt1, pt2, (0, 0, 255), cv2.FILLED)
+        font = cv2.FONT_HERSHEY_DUPLEX
+        tpt = 730, h - 5
         if self.obj_state['TR']:
-            cv2.rectangle(frame, (0, 0), (w, h), (0, 0, 255), 8)
+            cv2.putText(frame, "Trial: on", tpt, font, 0.5, (255, 255, 255), 1)
+        else:
+            cv2.putText(frame, "Trial: off", tpt, font, 0.5, (255, 255, 255), 1)
 
     def finalize_trial(self):
         scheme = self.session.get_scheme_trial_info()
