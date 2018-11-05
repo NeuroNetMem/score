@@ -2,6 +2,10 @@
 #*_ui.py
 #*_rc.py
 
+# Folder view configuration files
+.DS_Store
+Desktop.ini
+
 ### Qt template
 # C++ objects and libs
 

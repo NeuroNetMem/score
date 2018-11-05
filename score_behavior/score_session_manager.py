@@ -58,8 +58,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
         self.mode = mode
         self.scheme_file = filename
-        if self.scheme_file[-10:] != "_sheet.csv":
-            raise ValueError("scheme filename should have the end in '_sheet.csv'. ")
+        if self.scheme_file[-10:] != ".sheet.csv":
+            raise ValueError("scheme filename should have the end in '.sheet.csv'. ")
         self.dirname = os.path.dirname(self.scheme_file)
         self.basename, _ = os.path.splitext(os.path.basename(self.scheme_file))
         self.basename = self.basename[:-6]

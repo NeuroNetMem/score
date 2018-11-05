@@ -233,7 +233,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         self.log.debug('Asking for session file location to open...')
         # noinspection PyCallByClass,PyTypeChecker
         dialog_out = QtWidgets.QFileDialog.getOpenFileName(self, "Open Live Session File",
-                                                           os.getcwd(), "CSV (*_sheet.csv)")
+                                                           os.getcwd(), "CSV (*.sheet.csv)")
         session_file = dialog_out[0]
         self.open_live_session(session_file)
 
