@@ -138,7 +138,7 @@ class Ui_TrialDialog(object):
         _translate = QtCore.QCoreApplication.translate
         TrialDialog.setWindowTitle(_translate("TrialDialog", "Dialog"))
         self.label.setText(_translate("TrialDialog", "Session"))
-        self.label_3.setText(_translate("TrialDialog", "Scheme nr."))
+        self.label_3.setText(_translate("TrialDialog", "Run nr."))
         self.label_2.setText(_translate("TrialDialog", "Sequence nr"))
         self.label_4.setText(_translate("TrialDialog", "Subject"))
         self.label_5.setText(_translate("TrialDialog", "Location 1"))
