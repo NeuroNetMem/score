@@ -36,7 +36,7 @@ class ProfilerMainWindow(QtWidgets.QMainWindow):
         # animal_end = (75, 31)
         self.device = VideoDeviceManager(video_file=video_filename)
         self.analyzer = ObjectSpaceFrameAnalyzer(self.device, parent=self)
-        self.analyzer.init_tracker(self.device.frame_size)
+        self.analyzer.init_tracker(self.device.frame_size_in)
         self.device.set_analyzer(self.analyzer)
         self.cameraWidget.set_device(self.device)
         self.device.acquire_background(background_frame)

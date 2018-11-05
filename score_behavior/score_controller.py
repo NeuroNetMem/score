@@ -72,6 +72,8 @@ class DeviceManager(QtCore.QObject):
         self.save_raw_video = True
         self.yes_no = False
         self.thread = None
+        self.top_info_band_height = 15
+        self.bottom_info_band_height = 15
         # this flag to close the manager
         self.to_release = False
         self._device = None  # the underlying video source device
@@ -250,16 +252,16 @@ class DeviceManager(QtCore.QObject):
         if self.out:
             # self.out.release()
             self.out = None
-        self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size)
+        self.out = cv2.VideoWriter(filename, fourcc, self.fps, self.frame_size_out)
         self.frame_no = 0
         if self.save_raw_video:
             if self.raw_out:
                 # self.raw_out.release()
                 self.raw_out = None
-            self.raw_out = cv2.VideoWriter(filename_raw, fourcc, self.fps, self.frame_size)
+            self.raw_out = cv2.VideoWriter(filename_raw, fourcc, self.fps, self.frame_size_out)
         if self.out.isOpened():
             logger.info("successfully opened video out file {} at {} fps and {} frame size".format(filename, self.fps,
-                                                                                                   self.frame_size))
+                                                                                                   self.frame_size_out))
             self.start_time = self.get_absolute_time()
         else:
             import warnings
@@ -284,18 +286,23 @@ class DeviceManager(QtCore.QObject):
         pass  # pure virtual function
 
     def add_timestamp_string(self, frame):
+
+        w, h = self.frame_size_out
+        font = cv2.FONT_HERSHEY_DUPLEX
+        datestring = datetime.datetime.now().isoformat()
+        tpt = 5, h - 5
+        cv2.putText(frame, datestring, tpt, font, 0.5, (255, 255, 255), 1)
         if self.state == State.ACQUIRING and self.display_time:
-            h, w, _ = frame.shape
             cur_time = str(self.get_cur_time())[:-4]
             font = cv2.FONT_HERSHEY_DUPLEX
             # noinspection PyUnusedLocal
-            t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
-            tpt = 5, h - 5
-            cv2.putText(frame, cur_time, tpt, font, 0.5, (0, 0, 255), 1)
+            # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
+            tpt = 300, h - 5
+            cv2.putText(frame, cur_time, tpt, font, 0.5, (255, 255, 255), 1)
             cur_frame = str(self.frame_no)
-            t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
-            tpt = 5, h - 5 - t_size[1]
-            cv2.putText(frame, cur_frame, tpt, font, 0.5, (0, 255, 255), 1)
+            # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
+            tpt = 500, h - 5
+            cv2.putText(frame, cur_frame, tpt, font, 0.5, (255, 255, 255), 1)
 
     def get_cur_time(self):
         """get current time, null implementation"""
@@ -330,7 +337,11 @@ class DeviceManager(QtCore.QObject):
         return None, None  # pure virtual
 
     @property
-    def frame_size(self):
+    def frame_size_in(self):
+        return None, None  # pure virtual
+
+    @property
+    def frame_size_out(self):
         return None, None  # pure virtual
 
     @property
@@ -374,7 +385,7 @@ class VideoDeviceManager(DeviceManager):
             raise RuntimeError("Could not open video file {}".format(self.video_in_file_name))
         else:
             logger.debug("Successfully opened file {}".format(self.video_in_file_name))
-        logger.debug("video has a size of {} and {} fps".format(self.frame_size, self.fps))
+        logger.debug("video has a size of {} and {} fps".format(self.frame_size_in, self.fps))
         if self.video_control_widget is None:
             control_widget = VideoControlWidget()
             control_widget.ui.playButton.clicked.connect(self.play_action)
@@ -416,7 +427,7 @@ class VideoDeviceManager(DeviceManager):
             self._device = None
             self.init_device()
             if self.analyzer.do_track:
-                self.analyzer.init_tracker(self.frame_size)
+                self.analyzer.init_tracker(self.frame_size_in) #TODO tracker should get only the in frame
         if self.video_control_widget:
             self.video_control_widget.ui.playButton.setEnabled(False)
             self.video_control_widget.ui.pauseButton.setEnabled(True)
@@ -491,7 +502,13 @@ class VideoDeviceManager(DeviceManager):
             return 800, 600
 
     @property
-    def frame_size(self):
+    def frame_size_in(self):
+        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        return int(w), int(h)
+
+    @property
+    def frame_size_out(self):
         w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
         return int(w), int(h)
@@ -572,7 +589,7 @@ class CameraDeviceManager(DeviceManager):
             logger.error("Could not initialize camera id {}".format(self.camera_id))
             raise RuntimeError("Could not initialize camera id {}".format(self.camera_id))
         if self.analyzer.do_track:
-            self.analyzer.init_tracker(self.frame_size)
+            self.analyzer.init_tracker(self.frame_size_in)
         return None
 
     @QtCore.pyqtSlot()
@@ -595,6 +612,11 @@ class CameraDeviceManager(DeviceManager):
                     frame = self.rotate_functions[self.rotate_angle](frame)
                     if self.mirrored:
                         frame = cv2.flip(frame, 1)
+                    h, w, _ = frame.shape
+                    top_band = np.zeros((self.top_info_band_height, w, 3), frame.dtype)
+                    bottom_band = np.zeros((self.bottom_info_band_height, w, 3), frame.dtype)
+                    frame_in = frame
+                    frame = np.concatenate((top_band, frame, bottom_band), axis=0)
             if ret:
                 self.frame_no += 1
                 if self.state == State.ACQUIRING:
@@ -622,20 +644,29 @@ class CameraDeviceManager(DeviceManager):
     @property
     def display_frame_size(self):
         if self._device:
-            w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH) * self.scale)
-            h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT) * self.scale)
-            if self.rotate_angle in (90, 270):
-                w, h = h, w
-            return int(w), int(h)
+            (w, h) = self.frame_size_out
+            w = int(w * self.scale)
+            h = int(h * self.scale)
+            return w, h
         else:
             return 800, 600
 
     @property
-    def frame_size(self):
+    def frame_size_in(self):
         w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
         if self.rotate_angle in (90, 270):
             w, h = h, w
+        return int(w), int(h)
+
+    @property
+    def frame_size_out(self):
+        w = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if self.rotate_angle in (90, 270):
+            w, h = h, w
+
+        h += (self.top_info_band_height + self.bottom_info_band_height)
         return int(w), int(h)
 
     @property

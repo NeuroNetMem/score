@@ -220,7 +220,7 @@ class FrameAnalyzer(QtCore.QObject):
             self.tracker.delete_all_animals()
 
     def make_splash_screen(self, trial_info):
-        width, height = self.device.frame_size
+        width, height = self.device.frame_size_out
         self.device.splash_screen_countdown = self.device.fps * 3  # show the splash screen for three seconds
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
@@ -302,7 +302,7 @@ class FrameAnalyzer(QtCore.QObject):
             self.csv_out.close()
 
     def can_track(self):
-        return self.tracker is not None
+        return self.tracker is not Nones
 
     def start_animal_init(self, x, y): # TODO move to tracker
         self.animal_start_x = x
