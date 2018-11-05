@@ -164,7 +164,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_result_file_name(self):
         import os
-        filename = os.path.join(self.dirname, self.basename + '_results.csv')
+        filename = os.path.join(self.dirname, self.basename + '.results.csv')
         return filename
 
     def open_log_file(self):
@@ -204,7 +204,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def get_log_file_name(self):
         import os
-        filename = os.path.join(self.dirname, self.basename + '_log.csv')
+        filename = os.path.join(self.dirname, self.basename + '.log.csv')
         return filename
 
     def get_tracker_file_name(self):
@@ -249,7 +249,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def write_per_trial_log_file(self):
         prefix = self.file_name_prefix_for_trial
-        filename = prefix + "_log.csv"
+        filename = prefix + ".logt.csv"
         events = self.get_events_for_trial()
         events.to_csv(filename)
         logger.debug("saved log for trial in file " + filename)
