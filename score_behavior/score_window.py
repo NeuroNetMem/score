@@ -251,7 +251,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rotateComboBox.setCurrentIndex(rs.index(v))
         if "video_mirror" in d:
             self.ui.mirroredButton.setCheckState(d["video_mirror"])
-            # self.device.set_mirror = d["video_mirror"]
+
+        if "video_raw_out" in d:
+            self.ui.rawVideoCheckBox.setCheckState(d["video_raw_out"])
 
     # noinspection PyMethodMayBeStatic
     def get_video_session_file_to_open(self):

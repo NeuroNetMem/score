@@ -7,7 +7,8 @@
     "camera_id": 0,
     "display_scale": 0.8,
     "video_rotate": 0,
-    "video_mirror": false
+    "video_mirror": false,
+    "video_raw_out": true
   },
   "analyzer": {
     "do_track": 1,
