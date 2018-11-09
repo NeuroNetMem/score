@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    required_columns = ('condition', 'session', 'subject', 'trial',)
+    required_columns = ('condition', 'session', 'subject', 'trial', 'comments',)
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None,
                  min_free_disk_space=0, mode='live', r_keys=None):
@@ -72,11 +72,14 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if not set(self.scheme.columns) > set(self.required_columns):
             raise ValueError('required columns were not present')
 
+        if extra_trial_columns is None:
+            extra_trial_columns = []
+        extra_trial_columns.extend([i for i in self.scheme.columns if i not in self.required_columns])
+        # extra_trial_columns = list(set(self.scheme.columns) - set(self.required_columns))
         if self.mode == 'video':
             self.test_video_in_files()
 
         self.cur_scheduled_run = initial_trial
-        self.trial_ready = False
 
         self.result_columns = None
         self.result_file = None
@@ -147,7 +150,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         # TODO this should be in ObjectSpaCE!!! at least partly
         self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time',
                                     'loc_1_time_5', 'loc_2_time_5',
-                                    'total', 'sequence_nr', 'comments',  'goal', 'video_out_filename',
+                                    'total', 'sequence_nr',  'goal', 'video_out_filename',
                                     'video_out_raw_filename'))
         self.result_columns.extend(self.extra_trial_columns)
         logger.info("Attempting to open result file {}".format(self.result_file))
@@ -156,6 +159,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             logger.info("File exists, backing it up")
             shutil.copyfile(self.result_file, self.result_file + '.bk')
             self.trials_results = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
+            has_all_columns = all([i in self.trials_results.columns for i in self.result_columns])
+            if not has_all_columns:
+                raise ValueError("Existing result frame misses required columns")
             self.cur_actual_run = self.trials_results.index.max() + 1
         else:
             self.trials_results = pd.DataFrame(columns=self.result_columns)
