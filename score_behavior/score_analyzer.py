@@ -330,6 +330,10 @@ class FrameAnalyzer(QtCore.QObject):
             self.session.set_comments(comments)
 
     def process_frame(self, frame):
+        if self.trial_state != self.TrialState.IDLE:
+            t = self.device.get_cur_time()
+            ts = t.seconds + 1.e-6 * t.microseconds
+            self.session.set_event(ts, self.device.frame_no, 'FR1')
         if self.tracker:
             position_data = self.tracker.track(frame)
             if position_data:

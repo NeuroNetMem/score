@@ -262,6 +262,9 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         events.to_csv(filename)
         logger.debug("saved log for trial in file " + filename)
 
+    def get_log_with_no_frames(self):
+        return self.event_log[self.event_log['type'] != 'FR']
+
     def set_trial_finished(self, video_out_filename, video_out_raw_filename):
         if self.comments:
             self.trials_results.loc[(self.cur_actual_run, 'comments')] = self.comments
@@ -269,7 +272,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.trials_results.loc[(self.cur_actual_run, 'video_out_raw_filename')] = \
             os.path.basename(video_out_raw_filename)
         self.trials_results.to_csv(self.result_file)
-        self.event_log.to_csv(self.event_log_file)
+        log_no_frames = self.get_log_with_no_frames()
+        log_no_frames.to_csv(self.event_log_file)
         if self.tracker_log is not None:
             self.tracker_log.to_csv(self.tracker_file)
         if self.log_file_per_trial:
@@ -365,12 +369,12 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if i is None:
             i = self.cur_actual_run
         lt = self.event_log.loc[self.event_log['sequence_nr'] == float(i)]
-        if not lt.empty:
-            assert lt.iloc[0]['type'] == 'TR'
-            assert lt.iloc[-1]['type'] == 'TR'
-            assert lt.iloc[1:-1]['type'].all() != 'TR'
-            assert lt.iloc[0]['start_stop']
-            assert not lt.iloc[-1]['start_stop']
+        # if not lt.empty:
+        #     assert lt.iloc[0]['type'] == 'TR'
+        #     assert lt.iloc[-1]['type'] == 'TR'
+        #     assert lt.iloc[1:-1]['type'].all() != 'TR'
+        #     assert lt.iloc[0]['start_stop']
+        #     assert not lt.iloc[-1]['start_stop']
         return lt
 
     def get_scheme_trial(self, i=None):
@@ -397,7 +401,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.cur_scheduled_run += 1
 
     def close(self):
-        self.event_log.to_csv(self.event_log_file)
+        log_no_frames = self.get_log_with_no_frames()
+        log_no_frames.to_csv(self.event_log_file)
         if self.tracker_log:
             self.tracker_log.to_csv(self.tracker_file)
         self.trials_results.to_csv(self.result_file)
