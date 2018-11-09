@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 
 from score_behavior.score_session_manager import SessionManager
@@ -29,13 +30,18 @@ class ObjectSpaceSessionManager(SessionManager):
         obj_idxs = list(pd.unique(self.scheme['obj']))
         self.object_dir = os.path.expanduser(self.object_dir)
         self.object_files = {}
+        ll = os.listdir(self.object_dir)
+        sr = re.compile(r'(.*).JPG', re.IGNORECASE)
+        for l in ll:
+            m = re.match(sr, l)
+            if m:
+                self.object_files[int(m.group(1))] = os.path.join(self.object_dir, l)
+                if imghdr.what(os.path.join(self.object_dir, l)) != 'jpeg':
+                    raise RuntimeError("File {} is not a JPG image".format(l))
         for obj_idx in obj_idxs:
-            fname = os.path.join(self.object_dir, str(obj_idx) + '.JPG')
-            if not os.path.exists(fname):
-                raise RuntimeError("Object image file {} in folder {} does not exist".format(fname, self.object_dir))
-            if imghdr.what(fname) != 'jpeg':
-                raise RuntimeError("File {} is not a JPG image".format(fname))
-            self.object_files[obj_idx] = fname
+            if obj_idx not in self.object_files:
+                raise RuntimeError("Object image file for item {} in folder {} does not exist".format(obj_idx,
+                                                                                                      self.object_dir))
 
     def get_task_specific_result_columns(self):
         return ('start_date', 'loc_1_time', 'loc_2_time', 'total', 'DI'

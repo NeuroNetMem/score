@@ -166,10 +166,11 @@ class FrameAnalyzer(QtCore.QObject):
         if 'trial_duration' in scheme:
             self.trial_duration_seconds = datetime.timedelta(seconds=int(scheme['trial_duration']))
 
-        self.dialog.set_scheme(scheme)
-        self.start_trial_dialog()
+        if self.dialog:
+            self.dialog.set_scheme(scheme)
+            self.start_trial_dialog()
 
-        if self.dialog.exit_status():
+        if self.dialog and self.dialog.exit_status():
             self.session.set_trial_results_info(self.dialog.get_values())
         else:
             self.device.state = State.READY

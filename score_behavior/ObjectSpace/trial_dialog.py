@@ -67,7 +67,7 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.trialLineEdit.setReadOnly(ro)
         self.ui.subjectLineEdit.setReadOnly(ro)
         self.ui.subjectTrialLineEdit.setReadOnly(ro)
-        self.ui.objectComboBox.setEnabled(not ro)
+        self.ui.objectComboBox.setEnabled(True)
         self.ui.location1ComboBox.setEnabled(not ro)
         self.ui.location2ComboBox.setEnabled(not ro)
 
