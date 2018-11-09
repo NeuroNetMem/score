@@ -44,7 +44,7 @@ class ObjectSpaceSessionManager(SessionManager):
                                                                                                       self.object_dir))
 
     def get_task_specific_result_columns(self):
-        return ('start_date', 'loc_1_time', 'loc_2_time', 'total', 'DI'
+        return ('start_date', 'loc_1_time', 'loc_2_time', 'total', 'DI',
                 'loc_1_time_5', 'loc_2_time_5',
                 'total_5', 'DI_5', 'sequence_nr', 'goal', 'video_out_filename',
                 'video_out_raw_filename')

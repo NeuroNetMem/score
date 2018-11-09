@@ -66,7 +66,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.file_name_prefix_for_trial = ''
         self.cur_actual_run = 1
         try:
-            self.scheme = pd.DataFrame.read_csv(self.scheme_file, index_col='run_nr')
+            self.scheme = pd.read_csv(self.scheme_file, index_col='run_nr')
         except ParserError:
             raise ValueError("couldn't open file correctly")
         if not set(self.scheme.columns) > set(self.required_columns):
@@ -161,7 +161,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if os.path.exists(self.result_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.result_file, self.result_file + '.bk')
-            self.trials_results = pd.DataFrame.read_csv(self.result_file, index_col='sequence_nr')
+            self.trials_results = pd.read_csv(self.result_file, index_col='sequence_nr')
             trial_cols = list(self.trials_results.columns)
             trial_cols.append(self.trials_results.index.name)
             has_all_columns = all([i in trial_cols for i in self.result_columns])
@@ -189,7 +189,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if os.path.exists(self.event_log_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.event_log_file, self.event_log_file + '.bk')
-            self.event_log = pd.DataFrame.read_csv(self.event_log_file, index_col='wall_time')
+            self.event_log = pd.read_csv(self.event_log_file, index_col='wall_time')
         else:
             self.event_log = pd.DataFrame(columns=self.event_log_columns)
             self.event_log.set_index('wall_time', inplace=True)
@@ -207,7 +207,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if os.path.exists(self.tracker_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.tracker_file, self.tracker_file + '.bk')
-            self.tracker_log = pd.DataFrame.read_csv(self.tracker_file, index_col='wall_time')
+            self.tracker_log = pd.read_csv(self.tracker_file, index_col='wall_time')
         else:
             self.tracker_log = pd.DataFrame(columns=self.tracker_columns)
             self.tracker_log.set_index('wall_time', inplace=True)
