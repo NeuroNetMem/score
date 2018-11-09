@@ -3,9 +3,9 @@ import cv2
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 import numpy as np
-
 import logging
 import datetime
+
 from score_behavior.tracking.tracker import Tracker
 from score_behavior.ObjectSpace.session_manager import ObjectSpaceSessionManager
 from score_behavior.score_session_controller import SessionController
