@@ -78,6 +78,7 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
             self.ui.rawVideoCheckBox.setChecked(self.device.save_raw_video)
             self.ui.rawVideoCheckBox.setEnabled(True)
             self.ui.displayTsCheckBox.toggled.connect(self.device.set_display_time)
+            self.ui.trialStatusButton.clicked.connect(self.trial_state_toggle_ongoing)
             self.device.time_remaining_signal.connect(self.ui.countDownLabel.setText)
             self.device.state_changed_signal.connect(self.change_device_state)
             self.change_device_state(dev.state)
@@ -119,17 +120,17 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(FrameAnalyzer.TrialState)
     def update_trial_state(self, state):
         if state == FrameAnalyzer.TrialState.IDLE:
-            self.ui.trial_status_label.setText("IDLE")
-            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+            self.ui.trialStatusButton.setText("IDLE")
+            self.ui.trialStatusButton.setStyleSheet("QPushButton { background-color : white; color : black; }")
         elif state == FrameAnalyzer.TrialState.READY:
-            self.ui.trial_status_label.setText("READY")
-            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+            self.ui.trialStatusButton.setText("READY")
+            self.ui.trialStatusButton.setStyleSheet("QPushButton { background-color : white; color : black; }")
         elif state == FrameAnalyzer.TrialState.ONGOING:
-            self.ui.trial_status_label.setText("ONGOING")
-            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : red; color : black; }")
+            self.ui.trialStatusButton.setText("ONGOING")
+            self.ui.trialStatusButton.setStyleSheet("QPushButton { background-color : red; color : black; }")
         elif state == FrameAnalyzer.TrialState.COMPLETED:
-            self.ui.trial_status_label.setText("COMPLETED")
-            self.ui.trial_status_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+            self.ui.trialStatusButton.setText("COMPLETED")
+            self.ui.trialStatusButton.setStyleSheet("QPushButton { background-color : white; color : black; }")
 
     @QtCore.pyqtSlot()
     def video_finished(self):
@@ -340,6 +341,10 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
                 self.key_action.emit(msg)
         event.accept()
 
+    def trial_state_toggle_ongoing(self):
+        self.log.log(5, 'trial state toggle button clicked')
+        msg = 'TR1'
+        self.key_action.emit(msg)
 
 def excepthook(excType, excValue, tracebackobj):
     """

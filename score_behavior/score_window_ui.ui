@@ -174,13 +174,13 @@
             <property name="alignment">
              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
-            <widget class="QLabel" name="trial_status_label">
+            <widget class="QPushButton" name="trialStatusButton">
              <property name="geometry">
               <rect>
-               <x>20</x>
-               <y>40</y>
-               <width>121</width>
-               <height>20</height>
+               <x>0</x>
+               <y>30</y>
+               <width>151</width>
+               <height>51</height>
               </rect>
              </property>
              <property name="font">
@@ -191,10 +191,7 @@
               </font>
              </property>
              <property name="text">
-              <string>TRIAL STATE</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <string>IDLE</string>
              </property>
             </widget>
            </widget>
