@@ -80,6 +80,9 @@ class SessionController(QtCore.QAbstractTableModel):
             ll = list(self._data.index)
             self.current_row = ll.index(row)
             self.scroll_to_row(row)
+            top_left = self.createIndex(0,0)
+            bottom_right = self.createIndex(self.rowCount(), self.columnCount())
+            self.dataChanged.emit(top_left, bottom_right)
 
     def scroll_to_row(self, row):
         self.widget.ui.tableView.scrollTo(self.index(row, 0), self.widget.ui.tableView.PositionAtCenter)
