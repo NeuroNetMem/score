@@ -141,25 +141,27 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         if "log_file_per_trial" in config_dict:
             self.log_file_per_trial = config_dict["log_file_per_trial"]
 
+    def get_task_specific_result_columns(self):
+        return ()
+
     def open_result_file(self):
         import os
         import shutil
         self.result_file = self.get_result_file_name()
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
-        # TODO this should be in ObjectSpaCE!!! at least partly
-        self.result_columns.extend(('start_date', 'loc_1_time', 'loc_2_time',
-                                    'loc_1_time_5', 'loc_2_time_5',
-                                    'total', 'sequence_nr',  'goal', 'video_out_filename',
-                                    'video_out_raw_filename'))
+        self.result_columns.extend(self.get_task_specific_result_columns())
         self.result_columns.extend(self.extra_trial_columns)
+
         logger.info("Attempting to open result file {}".format(self.result_file))
         logger.info("with Columns {}".format(self.result_columns))
         if os.path.exists(self.result_file):
             logger.info("File exists, backing it up")
             shutil.copyfile(self.result_file, self.result_file + '.bk')
             self.trials_results = pd.DataFrame.from_csv(self.result_file, index_col='sequence_nr')
-            has_all_columns = all([i in self.trials_results.columns for i in self.result_columns])
+            trial_cols = list(self.trials_results.columns)
+            trial_cols.append(self.trials_results.index.name)
+            has_all_columns = all([i in trial_cols for i in self.result_columns])
             if not has_all_columns:
                 raise ValueError("Existing result frame misses required columns")
             self.cur_actual_run = self.trials_results.index.max() + 1

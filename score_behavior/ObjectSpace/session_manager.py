@@ -37,6 +37,12 @@ class ObjectSpaceSessionManager(SessionManager):
                 raise RuntimeError("File {} is not a JPG image".format(fname))
             self.object_files[obj_idx] = fname
 
+    def get_task_specific_result_columns(self):
+        return ('start_date', 'loc_1_time', 'loc_2_time', 'total', 'DI'
+                'loc_1_time_5', 'loc_2_time_5',
+                'total_5', 'DI_5', 'sequence_nr', 'goal', 'video_out_filename',
+                'video_out_raw_filename')
+
     def analyze_trial(self):
         # noinspection PyUnresolvedReferences
         import neuroseries as nts
@@ -61,9 +67,20 @@ class ObjectSpaceSessionManager(SessionManager):
             explore_5 = trial_5_min.intersect(explore)
             explore_time_5[l] = explore_5.tot_length(time_units='s')
 
+        total = explore_time[loc_1] + explore_time[loc_2]
+        DI = (explore_time[loc_2] - explore_time[loc_1]) / \
+             (explore_time[loc_2] + explore_time[loc_1] + 1.e-15)
+        total_5 = explore_time_5[loc_1] + explore_time_5[loc_2]
+        DI_5 = (explore_time_5[loc_2] - explore_time_5[loc_1]) / \
+               (explore_time_5[loc_2] + explore_time_5[loc_1] + 1.e-15)
+
         extra_info = {'loc_1_time': explore_time[loc_1],
                       'loc_2_time': explore_time[loc_2],
+                      'total': total,
+                      'DI': DI,
                       'loc_1_time_5': explore_time_5[loc_1],
-                      'loc_2_time_5': explore_time_5[loc_2]}
+                      'loc_2_time_5': explore_time_5[loc_2],
+                      'total_5': total_5,
+                      'DI_5': DI_5}
 
         self.update_results_with_extra_data(extra_info)
