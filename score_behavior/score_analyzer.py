@@ -242,8 +242,8 @@ class FrameAnalyzer(QtCore.QObject):
         self.splash_screen = np.zeros((height, width, 3), np.uint8)
 
         font = cv2.FONT_HERSHEY_DUPLEX
-        str1 = "Session " + str(trial_info['session']) + "  Trial " + str(trial_info['sequence_nr']) + " Schedule " + \
-            str(trial_info['run_nr'])
+        str1 = "Session " + str(trial_info['session']) + "  Sequence nr. " + str(trial_info['sequence_nr']) \
+               + " Run nr. " + str(trial_info['run_nr'])
         t_size, baseline = cv2.getTextSize(str1, font, 1, 1)
         tpt = (width-t_size[0])//2, 15
         cv2.putText(self.splash_screen, str1, tpt, font, 0.5, (0, 255, 255), 1)
