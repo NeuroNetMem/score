@@ -94,6 +94,8 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.tracker_log = None
         self.unscheduled_trial = False
 
+        self.redoing_trial = False
+
         self.comments = ''
 
         if not extra_event_columns:
@@ -151,6 +153,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
         self.result_columns = list(self.required_columns)
         self.result_columns.insert(0, 'run_nr')
         self.result_columns.extend(self.get_task_specific_result_columns())
+        self.result_columns.append('comments')
         self.result_columns.extend(self.extra_trial_columns)
 
         logger.info("Attempting to open result file {}".format(self.result_file))
@@ -163,7 +166,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             trial_cols.append(self.trials_results.index.name)
             has_all_columns = all([i in trial_cols for i in self.result_columns])
             if not has_all_columns:
-                raise ValueError("Existing result frame misses required columns")
+                raise ValueError("Existing result file misses required columns")
             self.cur_actual_run = self.trials_results.index.max() + 1
         else:
             self.trials_results = pd.DataFrame(columns=self.result_columns)
@@ -399,6 +402,10 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
 
     def skip_trial(self):
         self.cur_scheduled_run += 1
+
+    def redo_trial(self):
+        self.cur_scheduled_run -= 1
+        self.redoing_trial = True
 
     def close(self):
         log_no_frames = self.get_log_with_no_frames()

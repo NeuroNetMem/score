@@ -33,6 +33,9 @@ class Ui_Form(object):
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout.setSpacing(6)
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.redoTrialButton = QtWidgets.QPushButton(self.widget)
+        self.redoTrialButton.setObjectName("redoTrialButton")
+        self.horizontalLayout.addWidget(self.redoTrialButton)
         self.skipTrialButton = QtWidgets.QPushButton(self.widget)
         self.skipTrialButton.setObjectName("skipTrialButton")
         self.horizontalLayout.addWidget(self.skipTrialButton)
@@ -54,6 +57,7 @@ class Ui_Form(object):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.groupBox.setTitle(_translate("Form", "Session Manager"))
+        self.redoTrialButton.setText(_translate("Form", "Re-do Trial"))
         self.skipTrialButton.setText(_translate("Form", "Skip Trial"))
         self.commentButton.setText(_translate("Form", "Comment"))
 

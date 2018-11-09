@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 class SessionController(QtCore.QAbstractTableModel):
     comments_inserted_signal = QtCore.pyqtSignal(str, name="SessionController.comments_inserted_signal")
     skip_trial_signal = QtCore.pyqtSignal(name="SessionController.skip_trial_signal")
+    redo_trial_signal = QtCore.pyqtSignal(name="SessionController.redo_trial_signal")
 
     def __init__(self, data, parent=None):
         self.columns_to_show = ['subject', 'obj', 'loc_1', 'loc_2']
@@ -26,6 +27,7 @@ class SessionController(QtCore.QAbstractTableModel):
         self.widget.ui.tableView.verticalHeader().setVisible(True)
         self.widget.ui.commentButton.clicked.connect(self.get_comments)
         self.widget.ui.skipTrialButton.clicked.connect(self.skip_trial)
+        self.widget.ui.redoTrialButton.clicked.connect(self.redo_trial)
         self.current_row = 0
 
     @QtCore.pyqtSlot()
@@ -80,12 +82,18 @@ class SessionController(QtCore.QAbstractTableModel):
             ll = list(self._data.index)
             self.current_row = ll.index(row)
             self.scroll_to_row(row)
-            top_left = self.createIndex(0,0)
+            top_left = self.createIndex(0, 0)
             bottom_right = self.createIndex(self.rowCount(), self.columnCount())
             self.dataChanged.emit(top_left, bottom_right)
 
     def scroll_to_row(self, row):
         self.widget.ui.tableView.scrollTo(self.index(row, 0), self.widget.ui.tableView.PositionAtCenter)
+
+    @QtCore.pyqtSlot()
+    def redo_trial(self):
+        ok = QtWidgets.QMessageBox.question(self.widget, "Redo trial", "Redo trial. Are you sure?")
+        if ok == QtWidgets.QMessageBox.Yes:
+            self.redo_trial_signal.emit()
 
     @QtCore.pyqtSlot()
     def skip_trial(self):

@@ -130,6 +130,7 @@ class FrameAnalyzer(QtCore.QObject):
                 self.session_controller.widget.setFocusPolicy(QtCore.Qt.NoFocus)
                 self.session_controller.comments_inserted_signal.connect(self.set_comments)
                 self.session_controller.skip_trial_signal.connect(self.skip_trial)
+                self.session_controller.redo_trial_signal.connect(self.redo_trial)
 
                 self.parent().setFocus()
             except Exception as e:
@@ -177,7 +178,12 @@ class FrameAnalyzer(QtCore.QObject):
         self.device.setup_input_for_trial()
         self.video_out_filename, self.video_out_raw_filename = self.session.get_video_out_file_name_for_trial()
         self.device.open_video_out_files(self.video_out_filename, self.video_out_raw_filename)
-        self.session.set_comments('')
+        if self.session.redoing_trial:
+            self.session.set_comments('Redoing trial')
+            self.session.redoing_trial = False
+        else:
+            self.session.set_comments('')
+
         trial_info = self.session.get_trial_results_info()
         self.make_splash_screen(trial_info)
         self.trial_number_changed_signal.emit(str(trial_info['sequence_nr']))
@@ -197,6 +203,16 @@ class FrameAnalyzer(QtCore.QObject):
         if self.session:
             logger.debug("Skipping trial")
             self.session.skip_trial()
+            if self.dialog:
+                self.dialog.set_scheme(self.session.get_scheme_trial_info())
+            if self.session_controller:
+                csr = self.session.cur_scheduled_run
+                self.session_controller.set_current_row(csr)
+
+    def redo_trial(self):
+        if self.session:
+            logger.debug("redoing trial")
+            self.session.redo_trial()
             if self.dialog:
                 self.dialog.set_scheme(self.session.get_scheme_trial_info())
             if self.session_controller:
