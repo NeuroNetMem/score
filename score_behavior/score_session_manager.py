@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    required_columns = ('condition', 'session', 'subject', 'trial', 'comments',)
+    required_columns = ('condition', 'session', 'subject', 'trial',)
 
     def __init__(self, filename, initial_trial=1, extra_event_columns=None, extra_trial_columns=None,
                  min_free_disk_space=0, mode='live', r_keys=None):
