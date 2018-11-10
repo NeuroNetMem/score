@@ -349,7 +349,7 @@ class DeviceManager(QtCore.QObject):
 
     @property
     def frame_size_out(self):
-        return None, None  # pure virtual
+        return 0, 0  # pure virtual
 
     @property
     def fps(self):
@@ -582,10 +582,14 @@ class OpenCVCameraStream(QtCore.QThread):
         QtCore.QThread.__init__(self, parent)
         self.camera_id = camera_id
         self._device = cv2.VideoCapture(self.camera_id)
+        self.width = int(self._device.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self._device.get(cv2.CAP_PROP_FRAME_HEIGHT))
         logger.debug("OpenCV Capture for Camera started")
-        self.ret = False
-        self.frame = None
+        logger.debug("width is" + str(self.width) + " height is " + str(self.height))
+        self.ret = True
+        self.frame = np.zeros((self.height, self.width, 3), np.uint8)
         self.running = False
+        self.frame_no = 0
 
     def isOpened(self):
         return self._device.isOpened()
@@ -594,10 +598,14 @@ class OpenCVCameraStream(QtCore.QThread):
         self.running = True
         while self.running:
             self.ret, self.frame = self._device.read()
+            self.frame_no += 1
             time.sleep(0.001)
+            logger.debug("acquired frame " + str(self.frame_no) + " frame type " + str(type(self.frame)) +
+                         " ret is " + str(self.ret) + " data type " + str(self.frame.dtype))
 
     def read(self):
-        return (self.ret, self.frame)
+        logger.debug("read frame " + str(self.frame_no))
+        return self.ret, self.frame
 
     def get(self, arg):
         return self._device.get(arg)
@@ -617,6 +625,7 @@ class CameraDeviceManager(DeviceManager):
 
         self._device = OpenCVCameraStream(self.camera_id)
         self._device.start()
+        time.sleep(0.5)
         # cd = cv2.VideoCapture(self.camera_id)
         if not self._device.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))
