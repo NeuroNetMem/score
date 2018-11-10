@@ -26,6 +26,7 @@ def find_how_many_cameras():
 
 
 # the camera model for the Camera acquisition
+# noinspection PyAttributeOutsideInit
 class DeviceManager(QtCore.QObject):
 
     new_frame = QtCore.pyqtSignal(np.ndarray, name="CameraDevice.new_frame")
@@ -175,6 +176,7 @@ class DeviceManager(QtCore.QObject):
         self._state = val
         if val == State.ACQUIRING:
             self.start_time = self.get_absolute_time()
+            # noinspection PyAttributeOutsideInit
             self.frame_no = 0
         self.state_changed_signal.emit(val, prev_state)
         logger.debug("State changed to {}".format(self.state))
@@ -309,7 +311,6 @@ class DeviceManager(QtCore.QObject):
             tpt = 600, h - 5
             fps_string = "fps: " + "{0:5.1f}".format(self.current_fps)
             cv2.putText(frame, fps_string, tpt, font, 0.5, (255, 255, 255), 1)
-            cur_frame = str(self.frame_no)
 
     def get_cur_time(self):
         """get current time, null implementation"""
@@ -361,6 +362,7 @@ class DeviceManager(QtCore.QObject):
         self.add_timestamp_string(frame)
 
 
+# noinspection PyAttributeOutsideInit
 class VideoDeviceManager(DeviceManager):
     video_finished_signal = QtCore.pyqtSignal(name="CameraDevice.video_finished_signal")
     frame_pos_signal = QtCore.pyqtSignal(int, name="CameraDevice.frame_pos_signal")
@@ -597,7 +599,7 @@ class OpenCVCameraStream(QtCore.QThread):
             time.sleep(0.001)
 
     def read(self):
-        return (self.ret, self.frame)
+        return self.ret, self.frame
 
     def get(self, arg):
         return self._device.get(arg)
@@ -648,7 +650,7 @@ class CameraDeviceManager(DeviceManager):
                     h, w, _ = frame.shape
                     top_band = np.zeros((self.top_info_band_height, w, 3), frame.dtype)
                     bottom_band = np.zeros((self.bottom_info_band_height, w, 3), frame.dtype)
-                    frame_in = frame
+                    # frame_in = frame
                     frame = np.concatenate((top_band, frame, bottom_band), axis=0)
             if ret:
                 self.frame_no += 1

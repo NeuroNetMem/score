@@ -10,6 +10,7 @@ from score_behavior.ObjectSpace.analyzer import ObjectSpaceFrameAnalyzer
 
 
 class ProfilerMainWindow(QtWidgets.QMainWindow):
+    # noinspection PyPep8Naming
     def __init__(self):
         flags_ = QtCore.Qt.WindowFlags()
         super(ProfilerMainWindow, self).__init__(flags=flags_)

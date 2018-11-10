@@ -22,6 +22,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# noinspection PyAttributeOutsideInit
 class ScorerMainWindow(QtWidgets.QMainWindow):
     key_action = QtCore.pyqtSignal(str, name="ScorerMainWindow.key_action")
     comments_received = QtCore.pyqtSignal(str, name='ScorerMainWindow.comments_received')
@@ -346,12 +347,12 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
         msg = 'TR1'
         self.key_action.emit(msg)
 
-def excepthook(excType, excValue, tracebackobj):
+def excepthook(exc_type, exc_value, tracebackobj):
     """
     Global function to catch unhandled exceptions.
 
-    @param excType exception type
-    @param excValue exception value
+    @param exc_type exception type
+    @param exc_value exception value
     @param tracebackobj traceback object
     """
     notice = """An unhandled exception occurred. Please report the problem\n"""
@@ -360,7 +361,7 @@ def excepthook(excType, excValue, tracebackobj):
     traceback.print_tb(tracebackobj, None, tbinfofile)
     tbinfofile.seek(0)
     tbinfo = tbinfofile.getvalue()
-    errmsg = '{}: \n{}'.format(str(excType), str(excValue))
+    errmsg = '{}: \n{}'.format(str(exc_type), str(exc_value))
     sections = [notice, errmsg, tbinfo]
     msg = '\n'.join(sections)
     try:

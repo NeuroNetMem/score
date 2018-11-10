@@ -71,6 +71,7 @@ class TrialDialog(QtWidgets.QDialog):
         self.ui.location1ComboBox.setEnabled(not ro)
         self.ui.location2ComboBox.setEnabled(not ro)
 
+    # noinspection PyUnusedLocal
     @QtCore.pyqtSlot(int)
     def update_object_change(self, new_object):
         self.set_image()

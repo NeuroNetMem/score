@@ -16,6 +16,7 @@ from score_behavior.score_config import get_config_section
 logger = logging.getLogger(__name__)
 
 
+# noinspection PyAttributeOutsideInit
 class FrameAnalyzer(QtCore.QObject):
     class TrialState(Enum):
         IDLE = 1
@@ -158,6 +159,7 @@ class FrameAnalyzer(QtCore.QObject):
     def start_trial_dialog(self):
         pass
 
+    # noinspection PyAttributeOutsideInit
     def trial_setup(self):
         scheme = self.session.get_scheme_trial_info()
 
