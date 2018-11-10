@@ -74,9 +74,11 @@ class ObjectSpaceSessionManager(SessionManager):
             explore_time_5[l] = explore_5.tot_length(time_units='s')
 
         total = explore_time[loc_1] + explore_time[loc_2]
+        # noinspection PyPep8Naming
         DI = (explore_time[loc_2] - explore_time[loc_1]) / \
              (explore_time[loc_2] + explore_time[loc_1] + 1.e-15)
         total_5 = explore_time_5[loc_1] + explore_time_5[loc_2]
+        # noinspection PyPep8Naming
         DI_5 = (explore_time_5[loc_2] - explore_time_5[loc_1]) / \
                (explore_time_5[loc_2] + explore_time_5[loc_1] + 1.e-15)
 

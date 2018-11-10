@@ -191,8 +191,8 @@ def intersection_with_circle(p1, p2, center, radius):
     if det <= 0:
         return None, None
     else:
-        p1 = Point()
-        p2 = Point()                        
+        p1 = Point(0, 0)
+        p2 = Point(0, 0)
         p1.x = (D * dy + sgn(dy) * dx * math.sqrt(det)) / (dr ** 2)
         p2.x = (D * dy - sgn(dy) * dx * math.sqrt(det)) / (dr ** 2)
         p1.y = (- D * dx + abs(dy) * math.sqrt(det)) / (dr ** 2)

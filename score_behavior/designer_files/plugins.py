@@ -43,7 +43,7 @@ import sys
 import os
 
 from PyQt5.QtCore import QLibraryInfo, QProcess, QProcessEnvironment
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication
 
 
 app = QApplication(sys.argv)

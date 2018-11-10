@@ -578,6 +578,7 @@ class Tracker:
         frame = cv2.resize(frame, (int(cols), int(rows)))
         return frame
 
+    # noinspection PyAttributeOutsideInit
     def set_background(self, frame):
         """calculate background from the frames before the video stream ends, by averaging """
         bg = frame.astype(np.uint8)
@@ -600,6 +601,7 @@ class Tracker:
         logger.info("Adding animal")
         self.animals.append(Animal(self, len(self.animals), start_x, start_y, end_x, end_y, self.centroids, config))
         if len(self.animals) == self.max_num_animals:
+            # noinspection PyAttributeOutsideInit
             self.state = self.State.TRACKING
         if self.tracker_controller:
             self.tracker_controller.set_tracked_animals_number(len(self.animals))

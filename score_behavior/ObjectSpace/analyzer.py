@@ -9,6 +9,7 @@ from .dialog_controller import TrialDialogController
 logger = logging.getLogger(__name__)
 
 
+# noinspection PyAttributeOutsideInit
 class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
     dir_keys = {QtCore.Qt.Key_U: 'UL', QtCore.Qt.Key_7: 'UL',
                 QtCore.Qt.Key_O: 'UR', QtCore.Qt.Key_9: 'UR',
