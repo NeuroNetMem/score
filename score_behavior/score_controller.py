@@ -577,6 +577,31 @@ class VideoDeviceManager(DeviceManager):
         logger.debug("changed speed to {}".format(speed))
 
 
+class OpenCVCameraStream(QtCore.QThread):
+    def __init__(self, camera_id=0, parent=None):
+        QtCore.QThread.__init__(self, parent)
+        self.camera_id = camera_id
+        self._device = cv2.VideoCapture(self.camera_id)
+        logger.debug("OpenCV Capture for Camera started")
+        self.ret = False
+        self.frame = None
+        self.running = False
+
+    def isOpened(self):
+        return self._device.isOpened()
+
+    def run(self):
+        self.running = True
+        while self.running:
+            self.ret, self.frame = self._device.read()
+            time.sleep(0.001)
+
+    def read(self):
+        return (self.ret, self.frame)
+
+    def get(self, arg):
+        return self._device.get(arg)
+
 class CameraDeviceManager(DeviceManager):
     _DEFAULT_FPS = 30
 
@@ -589,8 +614,9 @@ class CameraDeviceManager(DeviceManager):
     def init_device(self):
         # print(cv2.getBuildInformation())
         # noinspection PyArgumentList
-        self._device = cv2.VideoCapture(0)
-        logger.debug("OpenCV Capture for Camera started")
+
+        self._device = OpenCVCameraStream(self.camera_id)
+        self._device.start()
         # cd = cv2.VideoCapture(self.camera_id)
         if not self._device.isOpened():
             logger.error("Could not initialize camera id {}".format(self.camera_id))

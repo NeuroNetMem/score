@@ -1,6 +1,6 @@
 {
   "general": {
-    "debug": 1
+    "debug": false
   },
   "video": {
     "camera_type": "opencv",
@@ -8,7 +8,7 @@
     "display_scale": 0.8,
     "video_rotate": 0,
     "video_mirror": false,
-    "video_raw_out": true
+    "video_raw_out": false
   },
   "analyzer": {
     "do_track": 1,
