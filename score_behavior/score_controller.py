@@ -91,6 +91,8 @@ class DeviceManager(QtCore.QObject):
         self.track_end_y = 0
 
         self.analyzer.device = self
+        self.last_frame_time = 0
+        self.current_fps = 0
 
     def set_analyzer(self, analyzer):
         self.analyzer = analyzer
@@ -242,9 +244,9 @@ class DeviceManager(QtCore.QObject):
         import platform
         codec_string = ''
         if platform.system() == 'Darwin':
-            codec_string = 'MJPG'
+            codec_string = 'avc1'
         elif platform.system() == 'Linux':
-            codec_string = 'MJPG'
+            codec_string = 'MP42'
         elif platform.system() == 'Windows':
             codec_string = 'MSVC'
 
@@ -300,9 +302,14 @@ class DeviceManager(QtCore.QObject):
             tpt = 330, h - 5
             cv2.putText(frame, cur_time, tpt, font, 0.5, (255, 255, 255), 1)
             cur_frame = str(self.frame_no)
+
             # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
             tpt = 530, h - 5
             cv2.putText(frame, cur_frame, tpt, font, 0.5, (255, 255, 255), 1)
+            tpt = 600, h - 5
+            fps_string = "fps: " + "{0:5.1f}".format(self.current_fps)
+            cv2.putText(frame, fps_string, tpt, font, 0.5, (255, 255, 255), 1)
+            cur_frame = str(self.frame_no)
 
     def get_cur_time(self):
         """get current time, null implementation"""
@@ -628,6 +635,11 @@ class CameraDeviceManager(DeviceManager):
 
                     if self.out:
                         self.out.write(frame)
+                    frame_time = time.time()
+                    inst_fps = 1. / (frame_time - self.last_frame_time)
+                    self.last_frame_time = frame_time
+                    self.current_fps = 0.95 * self.current_fps + 0.05 * inst_fps
+
                 h, w, _ = frame.shape
                 frame_display = cv2.resize(frame, (int(w * self.scale), int(h * self.scale)),
                                            interpolation=cv2.INTER_AREA)
