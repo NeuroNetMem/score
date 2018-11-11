@@ -32,8 +32,10 @@ class TrialDialog(QtWidgets.QDialog):
             self.object_files = object_files
 
         self.obj_idxs = list(self.object_files.keys())
+        self.obj_idxs.sort()
 
         str_obj_idxs = [str(i) for i in self.obj_idxs]
+
         self.log.debug("adding objects {}".format(str_obj_idxs))
         self.ui.objectComboBox.addItems(str_obj_idxs)
 

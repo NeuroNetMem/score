@@ -28,6 +28,6 @@
     "log_file_per_trial": true,
     "video_in_source": "glob",
     "video_in_glob": "{prefix}_t{trial:0>4}L*_raw.avi",
-    "object_dir": "~/src/batlab/score/score_behavior/resources/objects"
+    "object_dir": "APPDIR/objects"
   }
 }

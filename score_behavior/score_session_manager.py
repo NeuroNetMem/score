@@ -29,7 +29,6 @@ class SessionManager:
         self.video_in_glob = None
         self.extra_event_columns = []
         self.extra_trial_columns = []
-        self.object_dir = None
         self.log_file_per_trial = False
 
         self.read_config()
@@ -138,8 +137,7 @@ This program will cowardly refuse to continue""".format(min_free_disk_space))
             self.video_in_source = config_dict["video_in_source"]
         if "video_in_glob" in config_dict:
             self.video_in_glob = config_dict["video_in_glob"]
-        if "object_dir" in config_dict:
-            self.object_dir = config_dict["object_dir"]
+
         if "log_file_per_trial" in config_dict:
             self.log_file_per_trial = config_dict["log_file_per_trial"]
 

@@ -5,6 +5,8 @@ import appdirs
 
 from score_behavior.score_session_manager import SessionManager
 from score_behavior import appauthor, appname
+from score_behavior.score_config import get_config_section
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,7 +20,17 @@ class ObjectSpaceSessionManager(SessionManager):
                                                         extra_trial_columns=extra_trial_columns,
                                                         min_free_disk_space=min_free_disk_space,
                                                         mode=mode, r_keys=r_keys)
+        self.object_dir = ""
         self.extra_trial_columns.extend(['loc_1', 'loc_2', 'obj'])
+        config_dict = get_config_section("data_manager")
+        if "object_dir" in config_dict:
+            self.object_dir = config_dict["object_dir"]
+        application_dir = appdirs.user_data_dir(appname, appauthor)
+        self.object_dir = re.sub("APPDIR", application_dir, self.object_dir)
+        self.object_dir = os.path.expanduser(self.object_dir)
+        logger.info("ObjectSpace: searching for objects in directory: " + self.object_dir)
+        print("ObjectSpace: searching for objects in directory: " + self.object_dir)
+
         self.object_files = {}
         self.test_object_images()
 
@@ -29,7 +41,6 @@ class ObjectSpaceSessionManager(SessionManager):
         """test that all the object images are there before starting the session"""
         import imghdr
         obj_idxs = list(pd.unique(self.scheme['obj']))
-        self.object_dir = os.path.expanduser(self.object_dir)
         self.object_files = {}
         ll = os.listdir(self.object_dir)
         sr = re.compile(r'(.*).JPG', re.IGNORECASE)
@@ -39,6 +50,7 @@ class ObjectSpaceSessionManager(SessionManager):
                 self.object_files[int(m.group(1))] = os.path.join(self.object_dir, l)
                 if imghdr.what(os.path.join(self.object_dir, l)) != 'jpeg':
                     raise RuntimeError("File {} is not a JPG image".format(l))
+
         for obj_idx in obj_idxs:
             if obj_idx not in self.object_files:
                 raise RuntimeError("Object image file for item {} in folder {} does not exist".format(obj_idx,
