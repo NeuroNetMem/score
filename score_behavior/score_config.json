@@ -8,7 +8,8 @@
     "display_scale": 0.8,
     "video_rotate": 0,
     "video_mirror": false,
-    "video_raw_out": false
+    "video_raw_out": false,
+    "codec": "avc1"
   },
   "analyzer": {
     "do_track": 1,

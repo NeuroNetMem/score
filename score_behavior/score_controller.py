@@ -10,6 +10,7 @@ from PyQt5 import QtCore
 
 from .global_defs import DeviceState as State
 from score_behavior.video_control import VideoControlWidget
+from score_behavior.score_config import get_config_section
 
 logger = logging.getLogger(__name__)
 
@@ -246,12 +247,17 @@ class DeviceManager(QtCore.QObject):
         import platform
         codec_string = ''
         if platform.system() == 'Darwin':
-            codec_string = 'avc1'
+            codec_string = 'xxxx'
         elif platform.system() == 'Linux':
             codec_string = 'MP42'
         elif platform.system() == 'Windows':
             codec_string = 'MSVC'
 
+        d = get_config_section("video")
+        if 'codec' in d:
+            codec_string = d['codec']
+
+        logger.info("using codec " + codec_string + " to save video")
         fourcc = cv2.VideoWriter_fourcc(*codec_string)
         if self.out:
             # self.out.release()
