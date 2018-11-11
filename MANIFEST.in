@@ -1,1 +1,5 @@
 include score_behavior/VERSION
+recursive-include score_behavior/resources/csv *
+recursive-include score_behavior/resources/objects *
+
+
