@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -35,21 +35,27 @@
    <layout class="QHBoxLayout" name="horizontalLayout_7">
     <item>
      <widget class="QWidget" name="verticalWidget" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="maximumSize">
        <size>
         <width>1048</width>
-        <height>968</height>
+        <height>15000</height>
        </size>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <property name="spacing">
-        <number>-1</number>
+        <number>6</number>
        </property>
        <property name="sizeConstraint">
-        <enum>QLayout::SetDefaultConstraint</enum>
+        <enum>QLayout::SetNoConstraint</enum>
        </property>
        <item>
-        <widget class="CVVideoWidget" name="cameraWidget">
+        <widget class="CVVideoWidget" name="cameraWidget" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -84,19 +90,25 @@
             <property name="minimumSize">
              <size>
               <width>323</width>
-              <height>80</height>
+              <height>100</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
-              <width>350</width>
-              <height>80</height>
+              <width>323</width>
+              <height>200</height>
              </size>
             </property>
             <property name="title">
              <string>Trial Controls</string>
             </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
             <layout class="QHBoxLayout" name="horizontalLayout">
+             <property name="bottomMargin">
+              <number>12</number>
+             </property>
              <item>
               <widget class="QPushButton" name="playButton">
                <property name="enabled">
@@ -164,8 +176,8 @@
            <widget class="QGroupBox" name="groupBox_2">
             <property name="minimumSize">
              <size>
-              <width>150</width>
-              <height>0</height>
+              <width>200</width>
+              <height>100</height>
              </size>
             </property>
             <property name="title">
@@ -177,7 +189,7 @@
             <widget class="QPushButton" name="trialStatusButton">
              <property name="geometry">
               <rect>
-               <x>0</x>
+               <x>30</x>
                <y>30</y>
                <width>151</width>
                <height>51</height>
@@ -486,6 +498,12 @@
           </item>
           <item>
            <widget class="QLabel" name="trialLabel">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>50</height>
+             </size>
+            </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
@@ -670,7 +688,7 @@
      <x>0</x>
      <y>0</y>
      <width>1438</width>
-     <height>22</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

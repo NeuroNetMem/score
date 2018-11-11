@@ -11,5 +11,5 @@ pyuic5 tracking_controller/tracker_control_ui.ui -o tracking_controller/tracker_
 pyuic5 score_session_manager_control_ui.ui -o score_session_manager_control_ui.py
 pyrcc5 resources/icons/logo.qrc -o logo_rc.py
 
-sed -i '' "s/video_in_icons_rc/score_behavior.video_in_icons_rc/g" video_control_ui.py
-sed -i '' "s/logo_rc/score_behavior.logo_rc/g" score_window_ui.py
+sed -i'' 's/video_in_icons_rc/score_behavior.video_in_icons_rc/g' video_control_ui.py
+sed -i'' 's/logo_rc/score_behavior.logo_rc/g' score_window_ui.py

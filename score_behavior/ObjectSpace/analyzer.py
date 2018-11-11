@@ -99,7 +99,7 @@ class ObjectSpaceFrameAnalyzer(FrameAnalyzer):
                 pt1, pt2 = self.rect_coord[place](w, h)
                 cv2.rectangle(frame, pt1, pt2, (0, 0, 255), cv2.FILLED)
         font = cv2.FONT_HERSHEY_DUPLEX
-        tpt = 730, h - 5
+        tpt = 300, self.device.top_info_band_height-2
         if self.obj_state['TR']:
             cv2.putText(frame, "Trial: on", tpt, font, 0.5, (255, 255, 255), 1)
         else:

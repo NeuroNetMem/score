@@ -56,6 +56,7 @@ class CVVideoWidget(QtWidgets.QWidget):
         w, h = self._camera_device.display_frame_size
         self.setMinimumSize(w, h)
         self.setMaximumSize(w, h)
+        self.resize(w, h)
         self.updateGeometry()
 
     def sizeHint(self):

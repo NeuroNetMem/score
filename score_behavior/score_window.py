@@ -116,7 +116,9 @@ class ScorerMainWindow(QtWidgets.QMainWindow):
     def video_size_changed(self):
         (w, h) = self.device.display_frame_size
         self.log.debug('Video size changed to {}, {}'.format(w, h))
+        self.ui.cameraWidget.resize(w, h)
         self.updateGeometry()
+        self.adjustSize()
 
     @QtCore.pyqtSlot(FrameAnalyzer.TrialState)
     def update_trial_state(self, state):

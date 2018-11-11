@@ -306,9 +306,9 @@ class DeviceManager(QtCore.QObject):
             cur_frame = str(self.frame_no)
 
             # t_size, baseline = cv2.getTextSize(cur_time, font, 0.5, 1)
-            tpt = 530, h - 5
+            tpt = 430, h - 5
             cv2.putText(frame, cur_frame, tpt, font, 0.5, (255, 255, 255), 1)
-            tpt = 600, h - 5
+            tpt = 500, h - 5
             fps_string = "fps: " + "{0:5.1f}".format(self.current_fps)
             cv2.putText(frame, fps_string, tpt, font, 0.5, (255, 255, 255), 1)
 
@@ -606,10 +606,7 @@ class OpenCVCameraStream(QtCore.QThread):
                          " ret is " + str(self.ret) + " data type " + str(self.frame.dtype))
 
     def read(self):
-<<<<<<< HEAD
         logger.debug("read frame " + str(self.frame_no))
-=======
->>>>>>> 130896f6f03f6c66792714027c73665877894be4
         return self.ret, self.frame
 
     def get(self, arg):

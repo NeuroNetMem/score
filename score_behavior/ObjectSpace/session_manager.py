@@ -1,9 +1,10 @@
 import os
 import re
 import pandas as pd
+import appdirs
 
 from score_behavior.score_session_manager import SessionManager
-
+from score_behavior import appauthor, appname
 import logging
 
 logger = logging.getLogger(__name__)
