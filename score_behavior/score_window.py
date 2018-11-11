@@ -2,11 +2,14 @@
 
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
+from PyQt5 import QtGui
 
 import os
 import sys
 import traceback
 import io
+import pkg_resources
+import tempfile
 
 from score_behavior import GIT_VERSION
 # noinspection PyUnresolvedReferences
@@ -425,7 +428,11 @@ def _main():
 
     try:
         app = QtWidgets.QApplication(sys.argv)
-
+        icon_file_bytes = pkg_resources.resource_string(__name__, "resources/icons/memdyn_logo_square.png")
+        icon_file = tempfile.NamedTemporaryFile()
+        icon_file.write(icon_file_bytes)
+        app.setWindowIcon(QtGui.QIcon(icon_file.name))
+        icon_file.close()
         window = ScorerMainWindow()
         window.show()
         app.quitOnLastWindowClosed = True
