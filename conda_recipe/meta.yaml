@@ -1,15 +1,16 @@
 package:
   name: score
-  version: 1.1.0a1
+  version: 1.1.0a2
 
 source:
-  git_rev: 1.1.0a1
-  git_url: https://github.com/MemDynLab/neuroseries.git
+  git_rev: 1.1.0a2
+  git_url: https://github.com/MemDynLab/score.git
 
 requirements:
   host:
     - python=3.7
     - setuptools
+    - appdirs
 
   run:
     - python=3.7
