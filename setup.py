@@ -1,7 +1,4 @@
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup, find_packages
 
 import os
 import subprocess
@@ -39,8 +36,7 @@ setup(description='Behavioral scorer',
       author_email='fpbattaglia@gmail.com',
       version=VERSION,
       license='GPLv3',
-      packages=['score_behavior', 'score_behavior.ObjectSpace', 'score_behavior.tracking',
-                'score_behavior.tracking.geometry', 'score_behavior.tracking_controller'],
+      packages=find_packages(),
       include_package_data=True,
       data_files=[(object_dir, object_files)],
       name='score_behavior',

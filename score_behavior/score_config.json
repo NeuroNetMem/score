@@ -9,7 +9,7 @@
     "video_rotate": 0,
     "video_mirror": false,
     "video_raw_out": false,
-    "codec": "avc1"
+    "codec": "mp42"
   },
   "analyzer": {
     "do_track": 1,
