@@ -1,0 +1,33 @@
+package:
+  name: score
+  version: 1.1.0a1
+
+source:
+  git_rev: 1.1.0a1
+  git_url: https://github.com/MemDynLab/neuroseries.git
+
+requirements:
+  host:
+    - python=3.7
+    - setuptools
+
+  run:
+    - python=3.7
+    - numpy
+    - pandas>=0.23
+    - scipy
+    - opencv
+    - appdirs
+    - pyqt
+    - neuroseries
+
+test:
+  imports:
+    - score_behavior
+    - score_behavior.score_analyzer
+    - score_behavior.score_session_manager
+
+about:
+  home: https://github.com/MemDynLab/score
+  license: GPL3
+  license_file: LICENSE
