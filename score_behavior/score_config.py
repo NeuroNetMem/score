@@ -20,30 +20,7 @@ string default_config here below.
 
 
 logger = logging.getLogger(__name__)
-default_config = """
-{
-  "general": {
-    "do_track": 1,
-    "debug": 1
-  },
-  "analyzer": {},
-  "tracker": {
-    "max_num_animals": 1,
-    "component_threshold": 40,
-    "speed_threshold": 1.2,
-    "head_radius": 5,
-    "front_radius": 7,
-    "back_radius": 10
-  },
-  "data_manager": {
-    "extra_trial_columns": [],
-    "extra_event_columns": [],
-    "video_in_source": "glob",
-    "video_in_glob": "{prefix}_t{trial:0>4}L*_raw.avi",
-    "object_dir": ""
-  }
-}
-"""
+
 
 config_dict = {}
 
@@ -55,10 +32,6 @@ def config_init(fname=None):
     if not os.path.exists(appdirs.user_data_dir(appname, appauthor)):
         os.makedirs(appdirs.user_data_dir(appname, appauthor))
 
-    if not os.path.exists(default_loc):
-        f = open(default_loc, "w")
-        f.write(default_config)
-        f.close()
 
     config_list = [default_loc,
                    os.path.join(os.getcwd(), 'score_config.json')]
