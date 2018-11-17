@@ -142,4 +142,6 @@ scratch/
 
 # Profile
 *.stat
-*.lprof
+*.lprofrecord.txt
+
+record.txt
