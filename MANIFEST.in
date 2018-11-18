@@ -2,4 +2,4 @@ include score_behavior/VERSION
 recursive-include score_behavior/resources/csv *
 # recursive-include score_behavior/resources/objects *
 include score_behavior/resources/icons/memdyn_logo_square.png
-
+include score_behavior/score_config.json
